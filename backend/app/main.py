@@ -5,7 +5,16 @@ from __future__ import annotations
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import companies, health, jds, profiles, reference, resumes
+from app.api.routes import (
+    companies,
+    health,
+    jds,
+    profiles,
+    reference,
+    resumes,
+    skill_matches,
+    talent_check,
+)
 from app.config import settings
 from app.contracts.v1 import CONTRACT_VERSION
 
@@ -33,6 +42,8 @@ api.include_router(companies.router)
 api.include_router(profiles.router)
 api.include_router(jds.router)
 api.include_router(resumes.router)
+api.include_router(talent_check.router)
+api.include_router(skill_matches.router)
 app.include_router(api)
 
 

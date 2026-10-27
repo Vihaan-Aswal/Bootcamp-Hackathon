@@ -81,8 +81,9 @@ describe("document intelligence screen", () => {
 
   it("uploads a JD and displays its evidence and source location", async () => {
     const fetchMock = vi.fn(async () => jsonResponse(extraction));
+    const onJdAnalyzed = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    render(<DocumentIntelligence provider={mockProvider} />);
+    render(<DocumentIntelligence provider={mockProvider} onJdAnalyzed={onJdAnalyzed} />);
 
     const file = new File(["mock JD text"], "role.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     fireEvent.change(screen.getByLabelText(/Job description \(PDF or DOCX\)/), {
@@ -91,6 +92,7 @@ describe("document intelligence screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Analyze job description" }));
 
     expect(await screen.findByText("Python is required for this role.")).toBeTruthy();
+    expect(onJdAnalyzed).toHaveBeenLastCalledWith(extraction);
     expect(screen.getByText("role.docx · Paragraph 4")).toBeTruthy();
     const [url, options] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("/api/v1/jds/analyze");

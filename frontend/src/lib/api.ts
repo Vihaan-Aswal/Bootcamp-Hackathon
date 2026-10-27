@@ -6,6 +6,13 @@ export type SkillCategoryListResponse =
   components["schemas"]["SkillCategoryListResponse"];
 export type ExtractionResult = components["schemas"]["ExtractionResult"];
 export type CandidateProfile = components["schemas"]["CandidateProfile"];
+export type CompanySkillBar = components["schemas"]["CompanySkillBar"];
+export type TalentCheckResult = components["schemas"]["TalentCheckResult"];
+export type SkillMatchResult = components["schemas"]["SkillMatchResult"];
+export type SkillMatchRequest = components["schemas"]["SkillMatchRequest"];
+export type MatchConfirmation = components["schemas"]["MatchConfirmation"];
+export type PossibleMatch = components["schemas"]["PossibleMatch"];
+export type Skill = components["schemas"]["Skill"];
 
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(path, { headers: { Accept: "application/json" } });
@@ -59,6 +66,8 @@ async function postJson<T>(path: string, value: unknown): Promise<T> {
 export const api = {
   health: () => getJson<HealthResponse>("/api/v1/health"),
   companies: () => getJson<CompanyListResponse>("/api/v1/companies"),
+  company: (companyId: string) =>
+    getJson<CompanySkillBar>(`/api/v1/companies/${encodeURIComponent(companyId)}`),
   skillCategories: () =>
     getJson<SkillCategoryListResponse>("/api/v1/reference/skill-categories"),
   analyzeJd: (file: File) => postFile<ExtractionResult>("/api/v1/jds/analyze", file),
@@ -66,4 +75,11 @@ export const api = {
     postFile<ExtractionResult>("/api/v1/resumes/parse", file, allowExternalProcessing),
   validateProfile: (profile: unknown) =>
     postJson<CandidateProfile>("/api/v1/profiles/validate", profile),
+  talentCheck: (companyId: string, profile: CandidateProfile) =>
+    postJson<TalentCheckResult>(
+      `/api/v1/companies/${encodeURIComponent(companyId)}/talent-check`,
+      profile,
+    ),
+  skillMatch: (request: SkillMatchRequest) =>
+    postJson<SkillMatchResult>("/api/v1/skill-matches/score", request),
 };

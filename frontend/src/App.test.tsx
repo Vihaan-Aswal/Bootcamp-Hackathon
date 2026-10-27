@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -65,8 +65,8 @@ describe("foundation screen", () => {
     render(<App />);
 
     expect(await screen.findByText(/M3 profile builder/)).toBeTruthy();
-    expect(screen.getByText("Talent Check")).toBeTruthy();
-    expect(screen.getByText("Google")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Talent Check" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Google" })).toBeTruthy();
     expect(screen.getByText("COD", { selector: "code" })).toBeTruthy();
     expect(screen.getByText(/Provisional data/)).toBeTruthy();
   });
@@ -115,7 +115,7 @@ describe("foundation screen", () => {
     expect(validationBodies[0].profile_id).toBe(originalId);
     expect(validationBodies[1].profile_id).not.toBe(originalId);
     await waitFor(() =>
-      expect(screen.getByLabelText("Saved profile")).toHaveProperty(
+      expect(within(screen.getByRole("region", { name: "Profile Builder" })).getByLabelText("Saved profile")).toHaveProperty(
         "value",
         validationBodies[1].profile_id,
       ),

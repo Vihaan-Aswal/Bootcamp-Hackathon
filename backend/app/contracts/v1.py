@@ -409,6 +409,14 @@ class PossibleMatch(ContractModel):
     method: Literal["fuzzy"] = "fuzzy"
 
 
+class SkillMatchEvidenceGroup(ContractModel):
+    """Equivalent JD requirements scored once while preserving every source quote."""
+
+    group_key: str = Field(min_length=1, max_length=200)
+    requirement_type: RequirementType
+    evidence: list[Skill] = Field(min_length=1, max_length=200)
+
+
 class SkillMatchResult(VersionedContractModel):
     jd_document_id: UUID
     profile_id: UUID | None = None
@@ -418,6 +426,11 @@ class SkillMatchResult(VersionedContractModel):
     matched: list[Skill] = Field(default_factory=list, max_length=200)
     missing_required: list[Skill] = Field(default_factory=list, max_length=200)
     preferred: list[Skill] = Field(default_factory=list, max_length=200)
+    mentioned: list[Skill] = Field(default_factory=list, max_length=200)
+    unclear: list[Skill] = Field(default_factory=list, max_length=200)
+    requirement_evidence: list[SkillMatchEvidenceGroup] = Field(
+        default_factory=list, max_length=200
+    )
     possible: list[PossibleMatch] = Field(default_factory=list, max_length=200)
     match_methods: list[Literal["registry_id", "alias", "normalized_exact", "confirmed_fuzzy"]] = (
         Field(default_factory=list)
@@ -448,6 +461,20 @@ class MatchConfirmation(ContractModel):
     confirmed: bool
 
 
+class SkillMatchRequest(VersionedContractModel):
+    """Validated profile, JD Analytics output and candidate match decisions."""
+
+    profile: CandidateProfile
+    jd: ExtractionResult
+    confirmations: list[MatchConfirmation] = Field(default_factory=list, max_length=200)
+
+    @model_validator(mode="after")
+    def _job_description_only(self) -> SkillMatchRequest:
+        if self.jd.source_type is not SourceType.jd:
+            raise ValueError("Skill Matching requires a JD extraction result")
+        return self
+
+
 #: Domain objects published into the OpenAPI components so the generated
 #: frontend types cover every handoff, including routes added in later milestones.
 CONTRACT_MODELS: tuple[type[BaseModel], ...] = (
@@ -461,6 +488,8 @@ CONTRACT_MODELS: tuple[type[BaseModel], ...] = (
     GapRow,
     TalentCheckResult,
     PossibleMatch,
+    SkillMatchEvidenceGroup,
     SkillMatchResult,
     MatchConfirmation,
+    SkillMatchRequest,
 )

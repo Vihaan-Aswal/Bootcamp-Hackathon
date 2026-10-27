@@ -359,8 +359,10 @@ function SuggestionSection({
 
 export default function DocumentIntelligence({
   provider,
+  onJdAnalyzed,
 }: {
   provider: HealthResponse["provider"];
+  onJdAnalyzed?: (result: ExtractionResult | null) => void;
 }) {
   const [mode, setMode] = useState<AnalysisMode>("jd");
   const [file, setFile] = useState<File | null>(null);
@@ -391,11 +393,13 @@ export default function DocumentIntelligence({
     setBusy(true);
     setError(null);
     setResult(null);
+    if (mode === "jd") onJdAnalyzed?.(null);
     try {
       const extracted = mode === "jd"
         ? await api.analyzeJd(file)
         : await api.parseResume(file, consent);
       setResult(extracted);
+      if (extracted.source_type === "jd") onJdAnalyzed?.(extracted);
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "The document could not be analyzed.");
     } finally {
@@ -445,6 +449,7 @@ export default function DocumentIntelligence({
               setFile(event.target.files?.[0] ?? null);
               setResult(null);
               setError(null);
+              if (mode === "jd") onJdAnalyzed?.(null);
             }}
           />
         </label>

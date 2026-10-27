@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { api } from "./lib/api";
-import type { CandidateProfile } from "./lib/api";
+import type { CandidateProfile, ExtractionResult } from "./lib/api";
 import DocumentIntelligence from "./DocumentIntelligence";
 import ProfileBuilder from "./ProfileBuilder";
+import SkillMatchPanel from "./SkillMatchPanel";
+import TalentCheckPanel from "./TalentCheckPanel";
 import { createProfileRepository } from "./lib/profileRepository";
 import type {
   CompanyListResponse,
@@ -27,6 +29,7 @@ export default function App() {
   const [categories, setCategories] = useState<SkillCategoryListResponse | null>(null);
   const [profiles, setProfiles] = useState<CandidateProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [jdResult, setJdResult] = useState<ExtractionResult | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,7 +138,7 @@ export default function App() {
       <header>
         <h1>RADIX Talent Match</h1>
         <p className="subtitle">
-          {`M3 profile builder · contract v${health.contract_version}, skill registry v${health.registry_version}`}
+          {`M3 profile builder · M4 scoring · contract v${health.contract_version}, skill registry v${health.registry_version}`}
         </p>
       </header>
 
@@ -147,7 +150,7 @@ export default function App() {
         </ul>
       )}
 
-      <DocumentIntelligence provider={health.provider} />
+      <DocumentIntelligence provider={health.provider} onJdAnalyzed={setJdResult} />
 
       {profileError && <p className="error" role="alert">Profile storage: {profileError}</p>}
       <ProfileBuilder
@@ -163,6 +166,20 @@ export default function App() {
         categories={categories}
         provider={health.provider}
         storageMode={profileRepository.mode}
+      />
+
+      <TalentCheckPanel
+        companies={companies}
+        profiles={profiles}
+        selectedProfileId={selectedProfileId}
+        onProfileChange={setSelectedProfileId}
+      />
+
+      <SkillMatchPanel
+        profiles={profiles}
+        selectedProfileId={selectedProfileId}
+        onProfileChange={setSelectedProfileId}
+        jd={jdResult}
       />
 
       <section>

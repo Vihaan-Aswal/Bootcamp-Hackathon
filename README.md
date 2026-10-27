@@ -9,8 +9,9 @@ database schema or secret was copied from it.
 
 ## Current state
 
-Milestones **M1 — foundation and shared contract**, **M2 — document intelligence**, and the
-local implementation of **M3 — Profile Builder and persistence** are implemented:
+Milestones **M1 — foundation and shared contract**, **M2 — document intelligence**,
+**M3 — Profile Builder and persistence**, and the local implementation of **M4 — Talent Check
+and Skill Matching** are implemented:
 
 - independent FastAPI backend and React/Vite/TypeScript frontend, both runnable;
 - versioned Pydantic v2 contract (`backend/app/contracts/v1.py`) plus a flat provider DTO;
@@ -28,9 +29,13 @@ local implementation of **M3 — Profile Builder and persistence** are implement
   preferred roles and all 12 optional self-reported ratings;
 - JSON import/export, a local browser-storage adapter, and a browser Supabase repository protected
   by per-session row-level ownership policies.
+- a Talent Check that requires all 12 self-reported ratings, shows missing ratings without a score,
+  and calculates capped equal-weighted readiness with per-skillset gaps;
+- deterministic JD skill matching with approved aliases, separate required/preferred/mentioned/
+  unclear groups, missing requirements, and explicit confirmation for fuzzy suggestions.
 
-Talent Check and Skill Matching are scheduled for M4. `GET /api/v1/health` reports the M2 and M3
-modules as `ready` and reports M4 modules as `planned`.
+`GET /api/v1/health` reports implemented M2–M4 modules as `ready`. M5 integration and final review
+remain.
 The local `prd.md` and `implementation_plan.md` hold planning details and are intentionally
 excluded from Git.
 
@@ -69,7 +74,9 @@ npm run generate:api-types                # re-export OpenAPI and regenerate src
 
 The document endpoints are `POST /api/v1/jds/analyze` and `POST /api/v1/resumes/parse`.
 `POST /api/v1/profiles/validate` validates profile saves and imports through the canonical
-Pydantic v2 contract.
+Pydantic v2 contract. `POST /api/v1/companies/{company_id}/talent-check` scores a validated
+profile against the selected local company bar. `POST /api/v1/skill-matches/score` accepts the
+validated profile, a JD Analytics result and any explicit fuzzy-match decisions.
 The offline evaluator reads the ignored official sample pack locally and prints only aggregate
 skill-extraction counts; it never sends documents to a provider or prints sample contents.
 Current local mock results are 6/6 JD pairs and 4/4 resume pairs with at least one

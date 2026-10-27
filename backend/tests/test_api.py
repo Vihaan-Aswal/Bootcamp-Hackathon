@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import settings
-from app.contracts.v1 import CONTRACT_VERSION
+from app.contracts.v1 import CONTRACT_VERSION, RADIX_CATEGORY_CODES
 
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
 
@@ -49,7 +49,8 @@ def test_health_reports_the_contract_and_data_state(client: TestClient) -> None:
     }
     module_statuses = {module["key"]: module["status"] for module in payload["modules"]}
     assert module_statuses["profile_builder"] == "ready"
-    assert module_statuses["talent_check"] == "planned"
+    assert module_statuses["talent_check"] == "ready"
+    assert module_statuses["skill_matching"] == "ready"
 
 
 def test_company_list_matches_the_dataset(client: TestClient) -> None:
@@ -86,6 +87,62 @@ def test_profile_validation_endpoint_rejects_unknown_fields(
     response = client.post("/api/v1/profiles/validate", json=payload)
 
     assert response.status_code == 422
+
+
+def test_talent_check_endpoint_is_registered_and_returns_twelve_rows(
+    client: TestClient, fixture_json
+) -> None:
+    profile = fixture_json("candidate_profile.json")
+    profile["skillset_levels"] = [
+        {"category_code": code.value, "level": 8, "source": "self_reported"}
+        for code in RADIX_CATEGORY_CODES
+    ]
+
+    response = client.post("/api/v1/companies/google/talent-check", json=profile)
+
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["status"] == "complete"
+    assert isinstance(result["readiness_score"], int)
+    assert len(result["rows"]) == 12
+    assert len(result["company_data_version"]) == 64
+
+
+def test_skill_match_endpoint_is_registered_and_returns_contract_groups(
+    client: TestClient, fixture_json
+) -> None:
+    profile = fixture_json("candidate_profile.json")
+    profile["skills"] = [
+        {
+            "skill_name": "Python",
+            "skill_id": "python",
+            "category_code": "COD",
+            "evidence": "Python is used in several projects.",
+            "evidence_status": "manual",
+            "confidence": "high",
+            "requirement_type": None,
+            "origin": "manual",
+        }
+    ]
+    request = {
+        "schema_version": "1.0.0",
+        "profile": profile,
+        "jd": fixture_json("jd_extraction.json"),
+        "confirmations": [],
+    }
+
+    response = client.post("/api/v1/skill-matches/score", json=request)
+
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["status"] == "scorable"
+    assert result["match_score"] == 100
+    assert result["matched"][0]["skill_name"] == "Python"
+    assert [skill["skill_name"] for skill in result["preferred"]] == ["Kubernetes"]
+    assert {group["requirement_type"] for group in result["requirement_evidence"]} == {
+        "required",
+        "preferred",
+    }
 
 
 def test_unknown_company_returns_404(client: TestClient) -> None:

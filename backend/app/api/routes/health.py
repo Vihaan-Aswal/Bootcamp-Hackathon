@@ -16,8 +16,8 @@ MODULES: tuple[ModuleStatus, ...] = (
     ModuleStatus(key="jd_analytics", name="JD Analytics", milestone="M2", status="ready"),
     ModuleStatus(key="resume_parsing", name="Resume Parsing", milestone="M2", status="ready"),
     ModuleStatus(key="profile_builder", name="Profile Builder", milestone="M3", status="ready"),
-    ModuleStatus(key="talent_check", name="Talent Check", milestone="M4", status="planned"),
-    ModuleStatus(key="skill_matching", name="Skill Matching", milestone="M4", status="planned"),
+    ModuleStatus(key="talent_check", name="Talent Check", milestone="M4", status="ready"),
+    ModuleStatus(key="skill_matching", name="Skill Matching", milestone="M4", status="ready"),
 )
 
 

@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/companies/{company_id}/talent-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compare one validated profile with a company's 12-skill bar */
+        post: operations["run_talent_check_api_v1_companies__company_id__talent_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -126,6 +143,23 @@ export interface paths {
          * @description Return suggestions; the caller can edit or discard them before saving.
          */
         post: operations["parse_resume_endpoint_api_v1_resumes_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skill-matches/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compare a candidate profile with one analyzed job description */
+        post: operations["score_skill_match_api_v1_skill_matches_score_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -430,16 +464,10 @@ export interface components {
         };
         /** GapRow */
         GapRow: {
-            /**
-             * Bloom Code
-             * @default null
-             */
-            bloom_code: string | null;
-            /**
-             * Candidate Level
-             * @default null
-             */
-            candidate_level: number | null;
+            /** Bloom Code */
+            bloom_code?: string | null;
+            /** Candidate Level */
+            candidate_level?: number | null;
             category_code: components["schemas"]["CategoryCode"];
             /** Category Name */
             category_name: string;
@@ -617,6 +645,32 @@ export interface components {
             /** Warnings */
             warnings?: string[];
         };
+        /**
+         * SkillMatchEvidenceGroup
+         * @description Equivalent JD requirements scored once while preserving every source quote.
+         */
+        SkillMatchEvidenceGroup: {
+            /** Evidence */
+            evidence: components["schemas"]["Skill"][];
+            /** Group Key */
+            group_key: string;
+            requirement_type: components["schemas"]["RequirementType"];
+        };
+        /**
+         * SkillMatchRequest
+         * @description Validated profile, JD Analytics output and candidate match decisions.
+         */
+        SkillMatchRequest: {
+            /** Confirmations */
+            confirmations?: components["schemas"]["MatchConfirmation"][];
+            jd: components["schemas"]["ExtractionResult"];
+            profile: components["schemas"]["CandidateProfile"];
+            /**
+             * Schema Version
+             * @default 1.0.0
+             */
+            schema_version: string;
+        };
         /** SkillMatchResult */
         SkillMatchResult: {
             /** Distinct Required Skill Count */
@@ -634,26 +688,24 @@ export interface components {
             jd_document_id: string;
             /** Match Methods */
             match_methods?: ("registry_id" | "alias" | "normalized_exact" | "confirmed_fuzzy")[];
-            /**
-             * Match Score
-             * @default null
-             */
-            match_score: number | null;
+            /** Match Score */
+            match_score?: number | null;
             /** Matched */
             matched?: components["schemas"]["Skill"][];
+            /** Mentioned */
+            mentioned?: components["schemas"]["Skill"][];
             /** Missing Required */
             missing_required?: components["schemas"]["Skill"][];
             /** Possible */
             possible?: components["schemas"]["PossibleMatch"][];
             /** Preferred */
             preferred?: components["schemas"]["Skill"][];
-            /**
-             * Profile Id
-             * @default null
-             */
-            profile_id: string | null;
+            /** Profile Id */
+            profile_id?: string | null;
             /** Registry Version */
             registry_version: string;
+            /** Requirement Evidence */
+            requirement_evidence?: components["schemas"]["SkillMatchEvidenceGroup"][];
             /**
              * Schema Version
              * @default 1.0.0
@@ -664,6 +716,8 @@ export interface components {
              * @enum {string}
              */
             status: "scorable" | "not_scorable";
+            /** Unclear */
+            unclear?: components["schemas"]["Skill"][];
         };
         /**
          * SkillOrigin
@@ -766,11 +820,8 @@ export interface components {
              * Format: uuid
              */
             profile_id: string;
-            /**
-             * Readiness Score
-             * @default null
-             */
-            readiness_score: number | null;
+            /** Readiness Score */
+            readiness_score?: number | null;
             /** Rows */
             rows: components["schemas"]["GapRow"][];
             /**
@@ -844,6 +895,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompanySkillBar"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_talent_check_api_v1_companies__company_id__talent_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateProfile"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TalentCheckResult"];
                 };
             };
             /** @description Validation Error */
@@ -1026,6 +1112,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    score_skill_match_api_v1_skill_matches_score_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkillMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillMatchResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
