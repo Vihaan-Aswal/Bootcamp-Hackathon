@@ -55,6 +55,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jds/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze one PDF or DOCX job description
+         * @description Upload is held in memory and closed on success and every failure path.
+         */
+        post: operations["analyze_jd_upload_api_v1_jds_analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reference/skill-categories": {
         parameters: {
             query?: never;
@@ -66,6 +86,26 @@ export interface paths {
         get: operations["list_skill_categories_api_v1_reference_skill_categories_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resumes/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse a resume into editable, evidence-backed suggestions
+         * @description Return suggestions; the caller can edit or discard them before saving.
+         */
+        post: operations["parse_resume_endpoint_api_v1_resumes_parse_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -85,6 +125,21 @@ export interface components {
             email: string;
             /** Full Name */
             full_name: string;
+        };
+        /** Body_analyze_jd_upload_api_v1_jds_analyze_post */
+        Body_analyze_jd_upload_api_v1_jds_analyze_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_parse_resume_endpoint_api_v1_resumes_parse_post */
+        Body_parse_resume_endpoint_api_v1_resumes_parse_post: {
+            /**
+             * Allow External Processing
+             * @default false
+             */
+            allow_external_processing: boolean;
+            /** File */
+            file: string;
         };
         /** CandidateProfile */
         CandidateProfile: {
@@ -255,35 +310,19 @@ export interface components {
         Confidence: "high" | "medium" | "low";
         /** EducationItem */
         EducationItem: {
-            /**
-             * End Year
-             * @default null
-             */
-            end_year: number | null;
-            /**
-             * Evidence
-             * @default null
-             */
-            evidence: string | null;
-            /**
-             * Field Of Study
-             * @default null
-             */
-            field_of_study: string | null;
+            /** End Year */
+            end_year?: number | null;
+            /** Evidence */
+            evidence?: string | null;
+            /** Field Of Study */
+            field_of_study?: string | null;
             /** Institution */
             institution: string;
-            /**
-             * Qualification
-             * @default null
-             */
-            qualification: string | null;
-            /** @default null */
-            source_ref: components["schemas"]["SourceRef"] | null;
-            /**
-             * Start Year
-             * @default null
-             */
-            start_year: number | null;
+            /** Qualification */
+            qualification?: string | null;
+            source_ref?: components["schemas"]["SourceRef"] | null;
+            /** Start Year */
+            start_year?: number | null;
         };
         /**
          * ElementKind
@@ -300,33 +339,17 @@ export interface components {
         ExperienceItem: {
             /** Employer */
             employer: string;
-            /**
-             * End Year
-             * @default null
-             */
-            end_year: number | null;
-            /**
-             * Evidence
-             * @default null
-             */
-            evidence: string | null;
-            /** @default null */
-            source_ref: components["schemas"]["SourceRef"] | null;
-            /**
-             * Start Year
-             * @default null
-             */
-            start_year: number | null;
-            /**
-             * Summary
-             * @default null
-             */
-            summary: string | null;
-            /**
-             * Title
-             * @default null
-             */
-            title: string | null;
+            /** End Year */
+            end_year?: number | null;
+            /** Evidence */
+            evidence?: string | null;
+            source_ref?: components["schemas"]["SourceRef"] | null;
+            /** Start Year */
+            start_year?: number | null;
+            /** Summary */
+            summary?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /** ExtractionMetadata */
         ExtractionMetadata: {
@@ -337,16 +360,10 @@ export interface components {
              * Format: date-time
              */
             extracted_at?: string;
-            /**
-             * Model
-             * @default null
-             */
-            model: string | null;
-            /**
-             * Page Count
-             * @default null
-             */
-            page_count: number | null;
+            /** Model */
+            model?: string | null;
+            /** Page Count */
+            page_count?: number | null;
             /** Provider */
             provider: string;
             /**
@@ -367,11 +384,8 @@ export interface components {
          * @description Output of JD Analytics or Resume Parsing for one document.
          */
         ExtractionResult: {
-            /**
-             * Company
-             * @default null
-             */
-            company: string | null;
+            /** Company */
+            company?: string | null;
             /**
              * Document Id
              * Format: uuid
@@ -388,11 +402,8 @@ export interface components {
             projects?: components["schemas"]["ProjectItem"][];
             /** Rejected Claims */
             rejected_claims?: components["schemas"]["RejectedClaim"][];
-            /**
-             * Role
-             * @default null
-             */
-            role: string | null;
+            /** Role */
+            role?: string | null;
             /**
              * Schema Version
              * @default 1.0.0
@@ -451,6 +462,7 @@ export interface components {
             contract_version: string;
             /** Modules */
             modules: components["schemas"]["ModuleStatus"][];
+            provider: components["schemas"]["ProviderStatus"];
             /** Registry Version */
             registry_version: string;
             /**
@@ -534,20 +546,26 @@ export interface components {
         };
         /** ProjectItem */
         ProjectItem: {
-            /**
-             * Evidence
-             * @default null
-             */
-            evidence: string | null;
+            /** Evidence */
+            evidence?: string | null;
             /** Name */
             name: string;
-            /** @default null */
-            source_ref: components["schemas"]["SourceRef"] | null;
-            /**
-             * Summary
-             * @default null
-             */
-            summary: string | null;
+            source_ref?: components["schemas"]["SourceRef"] | null;
+            /** Summary */
+            summary?: string | null;
+        };
+        /** ProviderStatus */
+        ProviderStatus: {
+            /** Configured */
+            configured: boolean;
+            /** External */
+            external: boolean;
+            /** Name */
+            name: string;
+            /** Resume Processing Allowed */
+            resume_processing_allowed: boolean;
+            /** Supports Json Schema */
+            supports_json_schema: boolean;
         };
         /** RejectedClaim */
         RejectedClaim: {
@@ -555,11 +573,8 @@ export interface components {
             claim: string;
             /** Reason */
             reason: string;
-            /**
-             * Source Element Id
-             * @default null
-             */
-            source_element_id: string | null;
+            /** Source Element Id */
+            source_element_id?: string | null;
         };
         /**
          * RequirementType
@@ -573,25 +588,17 @@ export interface components {
             category_code: components["schemas"]["CategoryCode"];
             /** @default medium */
             confidence: components["schemas"]["Confidence"];
-            /**
-             * Evidence
-             * @default null
-             */
-            evidence: string | null;
+            /** Evidence */
+            evidence?: string | null;
             /** @default unverified */
             evidence_status: components["schemas"]["EvidenceStatus"];
             origin: components["schemas"]["SkillOrigin"];
-            /** @default null */
-            requirement_type: components["schemas"]["RequirementType"] | null;
-            /**
-             * Skill Id
-             * @default null
-             */
-            skill_id: string | null;
+            requirement_type?: components["schemas"]["RequirementType"] | null;
+            /** Skill Id */
+            skill_id?: string | null;
             /** Skill Name */
             skill_name: string;
-            /** @default null */
-            source_ref: components["schemas"]["SourceRef"] | null;
+            source_ref?: components["schemas"]["SourceRef"] | null;
         };
         /** SkillCategory */
         SkillCategory: {
@@ -731,21 +738,12 @@ export interface components {
             element_id: string;
             /** Filename */
             filename: string;
-            /**
-             * Heading
-             * @default null
-             */
-            heading: string | null;
-            /**
-             * Page
-             * @default null
-             */
-            page: number | null;
-            /**
-             * Paragraph
-             * @default null
-             */
-            paragraph: number | null;
+            /** Heading */
+            heading?: string | null;
+            /** Page */
+            page?: number | null;
+            /** Paragraph */
+            paragraph?: number | null;
         };
         /**
          * SourceType
@@ -882,6 +880,39 @@ export interface operations {
             };
         };
     };
+    analyze_jd_upload_api_v1_jds_analyze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_analyze_jd_upload_api_v1_jds_analyze_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_skill_categories_api_v1_reference_skill_categories_get: {
         parameters: {
             query?: never;
@@ -899,6 +930,72 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SkillCategoryListResponse"];
                 };
+            };
+        };
+    };
+    parse_resume_endpoint_api_v1_resumes_parse_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_parse_resume_endpoint_api_v1_resumes_parse_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionResult"];
+                };
+            };
+            /** @description External processing is disabled or consent is missing. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The upload exceeds a configured limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only PDF and DOCX files are supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The file is empty, invalid, encrypted, or needs OCR. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The configured provider returned an invalid response. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The configured provider timed out. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

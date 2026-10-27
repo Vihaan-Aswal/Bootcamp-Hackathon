@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { api } from "./lib/api";
+import DocumentIntelligence from "./DocumentIntelligence";
 import type {
   CompanyListResponse,
   HealthResponse,
@@ -60,7 +61,7 @@ export default function App() {
       <header>
         <h1>RADIX Talent Match</h1>
         <p className="subtitle">
-          {`Foundation build — contract v${health.contract_version}, skill registry v${health.registry_version}`}
+          {`M2 document intelligence · contract v${health.contract_version}, skill registry v${health.registry_version}`}
         </p>
       </header>
 
@@ -71,6 +72,8 @@ export default function App() {
           ))}
         </ul>
       )}
+
+      <DocumentIntelligence provider={health.provider} />
 
       <section>
         <h2>Modules</h2>

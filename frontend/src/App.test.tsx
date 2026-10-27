@@ -10,6 +10,13 @@ const bodies: Record<string, unknown> = {
     status: "ok",
     contract_version: "1.0.0",
     registry_version: "1.0.0",
+    provider: {
+      name: "mock",
+      configured: true,
+      supports_json_schema: false,
+      external: false,
+      resume_processing_allowed: true,
+    },
     company_data: {
       available: true,
       data_version: dataVersion,
@@ -56,7 +63,7 @@ describe("foundation screen", () => {
 
     render(<App />);
 
-    expect(await screen.findByText(/Foundation build/)).toBeTruthy();
+    expect(await screen.findByText(/M2 document intelligence/)).toBeTruthy();
     expect(screen.getByText("Talent Check")).toBeTruthy();
     expect(screen.getByText("Google")).toBeTruthy();
     expect(screen.getByText("COD")).toBeTruthy();

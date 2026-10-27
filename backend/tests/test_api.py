@@ -6,8 +6,10 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.contracts.v1 import CONTRACT_VERSION
 
 SCRIPTS_DIR = Path(__file__).parents[1] / "scripts"
@@ -31,6 +33,13 @@ def test_health_reports_the_contract_and_data_state(client: TestClient) -> None:
     assert payload["company_data"]["available"] is True
     assert payload["company_data"]["source_status"] == "provisional_csv_fallback"
     assert payload["company_data"]["official_json_confirmed"] is False
+    assert payload["provider"] == {
+        "name": "mock",
+        "configured": True,
+        "supports_json_schema": False,
+        "external": False,
+        "resume_processing_allowed": True,
+    }
     assert {module["key"] for module in payload["modules"]} == {
         "jd_analytics",
         "resume_parsing",
@@ -61,6 +70,41 @@ def test_unknown_company_returns_404(client: TestClient) -> None:
 
     assert response.status_code == 404
     assert "not-a-company" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    ("path", "filename", "form_data"),
+    [
+        ("/api/v1/jds/analyze", "role.pdf", {}),
+        ("/api/v1/resumes/parse", "resume.pdf", {"allow_external_processing": "true"}),
+    ],
+)
+def test_document_routes_return_safe_error_for_missing_provider_credentials(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    filename: str,
+    form_data: dict[str, str],
+) -> None:
+    monkeypatch.setattr(settings, "llm_provider", "openrouter")
+    monkeypatch.setattr(settings, "llm_model", "test-model")
+    monkeypatch.setattr(settings, "openrouter_api_key", "")
+
+    response = client.post(
+        path,
+        files={
+            "file": (
+                filename,
+                b"not parsed because no provider is configured",
+                "application/pdf",
+            )
+        },
+        data=form_data,
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "PROVIDER_NOT_CONFIGURED"
+    assert "API key" in response.json()["detail"]["message"]
 
 
 def test_skill_categories_expose_the_ladder(client: TestClient) -> None:

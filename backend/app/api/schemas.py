@@ -60,10 +60,19 @@ class ModuleStatus(ContractModel):
     status: Literal["ready", "planned"]
 
 
+class ProviderStatus(ContractModel):
+    name: str
+    configured: bool
+    supports_json_schema: bool
+    external: bool
+    resume_processing_allowed: bool
+
+
 class HealthResponse(ContractModel):
     status: Literal["ok"]
     contract_version: str
     registry_version: str
+    provider: ProviderStatus
     company_data: CompanyDataStatus
     modules: list[ModuleStatus]
     warnings: list[str] = Field(default_factory=list)

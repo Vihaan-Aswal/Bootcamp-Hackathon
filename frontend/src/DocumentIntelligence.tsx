@@ -1,0 +1,492 @@
+import { useState, type FormEvent } from "react";
+import type { ReactNode } from "react";
+
+import { api, type ExtractionResult, type HealthResponse } from "./lib/api";
+import type { components } from "./lib/api-types";
+
+type AnalysisMode = "jd" | "resume";
+type SkillSuggestion = components["schemas"]["Skill"];
+type EducationSuggestion = components["schemas"]["EducationItem"];
+type ProjectSuggestion = components["schemas"]["ProjectItem"];
+type ExperienceSuggestion = components["schemas"]["ExperienceItem"];
+
+type ReviewItem<T> = {
+  id: string;
+  accepted: boolean;
+  value: T;
+};
+
+function reviewItems<T>(values: T[], prefix: string): ReviewItem<T>[] {
+  return values.map((value, index) => ({ id: `${prefix}-${index}`, accepted: false, value }));
+}
+
+function sourceLocation(result: ExtractionResult, page?: number | null, paragraph?: number | null) {
+  const place = page ? `Page ${page}` : paragraph !== null && paragraph !== undefined ? `Paragraph ${paragraph + 1}` : "Source text";
+  return `${result.filename} · ${place}`;
+}
+
+export function ExtractionReview({ result }: { result: ExtractionResult }) {
+  const skills = result.skills ?? [];
+  const education = result.education ?? [];
+  const projects = result.projects ?? [];
+  const experience = result.experience ?? [];
+  const rejectedClaims = result.rejected_claims ?? [];
+  const warnings = result.metadata.warnings ?? [];
+
+  return (
+    <section aria-label="Extraction results" className="extraction-results">
+      <div className="result-heading">
+        <div>
+          <h3>{result.source_type === "jd" ? "JD analysis" : "Resume suggestions"}</h3>
+          <p className="muted">
+            {result.filename} · {skills.length} evidence-backed skill
+            {skills.length === 1 ? "" : "s"} · {result.metadata.provider}
+            {result.metadata.model ? ` / ${result.metadata.model}` : ""}
+          </p>
+        </div>
+        <span className="badge badge-ready">Evidence checked</span>
+      </div>
+
+      {result.metadata.redaction_applied && (
+        <p className="notice" role="note">
+          Name, email and phone patterns were removed before the external provider request.
+        </p>
+      )}
+
+      {warnings.map((warning) => (
+        <p className="notice" key={warning} role="note">
+          {warning}
+        </p>
+      ))}
+
+      {result.source_type === "jd" && skills.length > 0 ? (
+        <ul className="evidence-list">
+          {skills.map((skill, index) => (
+            <li key={`${skill.skill_id ?? skill.skill_name}-${index}`}>
+              <div className="skill-title">
+                <strong>{skill.skill_name}</strong>
+                <span className="badge">{skill.requirement_type ?? "Resume skill"}</span>
+                <span className="muted">{skill.category_code}</span>
+              </div>
+              <blockquote>{skill.evidence}</blockquote>
+              <p className="muted">
+                {skill.source_ref
+                  ? sourceLocation(result, skill.source_ref.page, skill.source_ref.paragraph)
+                  : "Source location unavailable"}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : result.source_type === "jd" ? (
+        <p className="muted">No skill claims had verifiable supporting text.</p>
+      ) : null}
+
+      {result.source_type === "resume" && (
+        <ResumeSuggestionReview
+          key={result.document_id}
+          result={result}
+          skills={skills}
+          education={education}
+          projects={projects}
+          experience={experience}
+        />
+      )}
+
+      {rejectedClaims.length > 0 && (
+        <details className="rejected-claims">
+          <summary>{rejectedClaims.length} claim(s) need review</summary>
+          <ul className="suggestion-list">
+            {rejectedClaims.map((claim, index) => (
+              <li key={`${claim.claim}-${index}`}>
+                <strong>{claim.claim}</strong>
+                <span>{claim.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
+function ResumeSuggestionReview({
+  result,
+  skills: initialSkills,
+  education: initialEducation,
+  projects: initialProjects,
+  experience: initialExperience,
+}: {
+  result: ExtractionResult;
+  skills: SkillSuggestion[];
+  education: EducationSuggestion[];
+  projects: ProjectSuggestion[];
+  experience: ExperienceSuggestion[];
+}) {
+  const [skills, setSkills] = useState(() => reviewItems(initialSkills, "skill"));
+  const [education, setEducation] = useState(() => reviewItems(initialEducation, "education"));
+  const [projects, setProjects] = useState(() => reviewItems(initialProjects, "project"));
+  const [experience, setExperience] = useState(() => reviewItems(initialExperience, "experience"));
+  const acceptedCount = [skills, education, projects, experience]
+    .reduce((sum, items) => sum + items.filter((item) => item.accepted).length, 0);
+
+  return (
+    <div className="resume-sections" aria-label="Editable resume suggestions">
+      <p className="muted review-summary">
+        Edit suggestions, accept the facts to keep, or remove anything that does not belong.
+        {` ${acceptedCount} accepted. Evidence quotes and locations stay tied to the original document after edits.`}
+      </p>
+      <SuggestionSection title="Skill suggestions" emptyText="No supported skills were found." hasItems={skills.length > 0}>
+        {skills.map(({ id, accepted, value }) => (
+          <li key={id}>
+            <div className="review-controls">
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  aria-label={`Accept ${value.skill_name}`}
+                  checked={accepted}
+                  onChange={(event) => setSkills((items) => items.map((item) =>
+                    item.id === id ? { ...item, accepted: event.target.checked } : item,
+                  ))}
+                />
+                Accept
+              </label>
+              <button type="button" onClick={() => setSkills((items) => items.filter((item) => item.id !== id))}>
+                Remove
+              </button>
+            </div>
+            <label className="edit-field">
+              Skill
+              <input
+                value={value.skill_name}
+                aria-label={`Edit ${value.skill_name}`}
+                onChange={(event) => setSkills((items) => items.map((item) => item.id === id
+                  ? { ...item, accepted: false, value: {
+                    ...item.value,
+                    skill_name: event.target.value,
+                    skill_id: null,
+                    category_code: "OTHER",
+                    evidence_status: "unverified",
+                  } }
+                  : item,
+                ))}
+              />
+            </label>
+            <span className="muted">{value.category_code} · {value.requirement_type ?? "Resume skill"}</span>
+            {value.evidence && <blockquote>{value.evidence}</blockquote>}
+            {value.source_ref && (
+              <span className="muted">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>
+            )}
+          </li>
+        ))}
+      </SuggestionSection>
+
+      <SuggestionSection title="Education suggestions" emptyText="No education suggestions were found." hasItems={education.length > 0}>
+        {education.map(({ id, accepted, value }) => (
+          <li key={id}>
+            <div className="review-controls">
+              <label className="checkbox-row">
+                <input type="checkbox" aria-label={`Accept education ${value.institution}`} checked={accepted}
+                  onChange={(event) => setEducation((items) => items.map((item) =>
+                    item.id === id ? { ...item, accepted: event.target.checked } : item,
+                  ))} />
+                Accept
+              </label>
+              <button type="button" onClick={() => setEducation((items) => items.filter((item) => item.id !== id))}>
+                Remove
+              </button>
+            </div>
+            <label className="edit-field">Institution
+              <input aria-label={`Edit institution ${value.institution}`} value={value.institution}
+                onChange={(event) => setEducation((items) => items.map((item) => item.id === id
+                  ? { ...item, accepted: false, value: { ...item.value, institution: event.target.value } }
+                  : item,
+                ))} />
+            </label>
+            <label className="edit-field">Qualification
+              <input aria-label={`Edit qualification for ${value.institution}`} value={value.qualification ?? ""}
+                onChange={(event) => setEducation((items) => items.map((item) => item.id === id
+                  ? { ...item, accepted: false, value: { ...item.value, qualification: event.target.value || null } }
+                  : item,
+                ))} />
+            </label>
+            <label className="edit-field">Field of study
+              <input aria-label={`Edit field of study for ${value.institution}`} value={value.field_of_study ?? ""}
+                onChange={(event) => setEducation((items) => items.map((item) => item.id === id
+                  ? { ...item, accepted: false, value: { ...item.value, field_of_study: event.target.value || null } }
+                  : item,
+                ))} />
+            </label>
+            <div className="year-fields">
+              <label className="edit-field">Start year
+                <input type="number" min="1900" max="2100" aria-label={`Edit education start year at ${value.institution}`}
+                  value={value.start_year ?? ""}
+                  onChange={(event) => setEducation((items) => items.map((item) => item.id === id
+                    ? { ...item, accepted: false, value: { ...item.value, start_year: event.target.value ? Number(event.target.value) : null } }
+                    : item,
+                  ))} />
+              </label>
+              <label className="edit-field">End year
+                <input type="number" min="1900" max="2100" aria-label={`Edit education end year at ${value.institution}`}
+                  value={value.end_year ?? ""}
+                  onChange={(event) => setEducation((items) => items.map((item) => item.id === id
+                    ? { ...item, accepted: false, value: { ...item.value, end_year: event.target.value ? Number(event.target.value) : null } }
+                    : item,
+                  ))} />
+              </label>
+            </div>
+            {value.evidence && <blockquote>{value.evidence}</blockquote>}
+            {value.source_ref && <span className="muted">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>}
+          </li>
+        ))}
+      </SuggestionSection>
+
+      <SuggestionSection title="Project suggestions" emptyText="No project suggestions were found." hasItems={projects.length > 0}>
+        {projects.map(({ id, accepted, value }) => (
+          <li key={id}>
+            <div className="review-controls">
+              <label className="checkbox-row">
+                <input type="checkbox" aria-label={`Accept project ${value.name}`} checked={accepted}
+                  onChange={(event) => setProjects((items) => items.map((item) =>
+                    item.id === id ? { ...item, accepted: event.target.checked } : item,
+                  ))} />
+                Accept
+              </label>
+              <button type="button" onClick={() => setProjects((items) => items.filter((item) => item.id !== id))}>
+                Remove
+              </button>
+            </div>
+            <label className="edit-field">Project name
+              <input aria-label={`Edit project ${value.name}`} value={value.name}
+                onChange={(event) => setProjects((items) => items.map((item) => item.id === id
+                  ? { ...item, accepted: false, value: { ...item.value, name: event.target.value } }
+                  : item,
+                ))} />
+            </label>
+            <label className="edit-field">Summary
+              <textarea aria-label={`Edit summary for ${value.name}`} value={value.summary ?? ""}
+                onChange={(event) => setProjects((items) => items.map((item) => item.id === id
+                  ? { ...item, accepted: false, value: { ...item.value, summary: event.target.value || null } }
+                  : item,
+                ))} />
+            </label>
+            {value.evidence && <blockquote>{value.evidence}</blockquote>}
+            {value.source_ref && <span className="muted">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>}
+          </li>
+        ))}
+      </SuggestionSection>
+
+      <SuggestionSection title="Experience suggestions" emptyText="No experience suggestions were found." hasItems={experience.length > 0}>
+        {experience.map(({ id, accepted, value }) => (
+          <li key={id}>
+            <div className="review-controls">
+              <label className="checkbox-row">
+                <input type="checkbox" aria-label={`Accept experience ${value.employer}`} checked={accepted}
+                  onChange={(event) => setExperience((items) => items.map((item) =>
+                    item.id === id ? { ...item, accepted: event.target.checked } : item,
+                  ))} />
+                Accept
+              </label>
+              <button type="button" onClick={() => setExperience((items) => items.filter((item) => item.id !== id))}>
+                Remove
+              </button>
+            </div>
+            <label className="edit-field">Employer
+              <input aria-label={`Edit employer ${value.employer}`} value={value.employer}
+                onChange={(event) => setExperience((items) => items.map((item) => item.id === id
+                  ? { ...item, accepted: false, value: { ...item.value, employer: event.target.value } }
+                  : item,
+                ))} />
+            </label>
+            <label className="edit-field">Title
+              <input aria-label={`Edit title at ${value.employer}`} value={value.title ?? ""}
+                onChange={(event) => setExperience((items) => items.map((item) => item.id === id
+                  ? { ...item, accepted: false, value: { ...item.value, title: event.target.value || null } }
+                  : item,
+                ))} />
+            </label>
+            <div className="year-fields">
+              <label className="edit-field">Start year
+                <input type="number" min="1900" max="2100" aria-label={`Edit experience start year at ${value.employer}`}
+                  value={value.start_year ?? ""}
+                  onChange={(event) => setExperience((items) => items.map((item) => item.id === id
+                    ? { ...item, accepted: false, value: { ...item.value, start_year: event.target.value ? Number(event.target.value) : null } }
+                    : item,
+                  ))} />
+              </label>
+              <label className="edit-field">End year
+                <input type="number" min="1900" max="2100" aria-label={`Edit experience end year at ${value.employer}`}
+                  value={value.end_year ?? ""}
+                  onChange={(event) => setExperience((items) => items.map((item) => item.id === id
+                    ? { ...item, accepted: false, value: { ...item.value, end_year: event.target.value ? Number(event.target.value) : null } }
+                    : item,
+                  ))} />
+              </label>
+            </div>
+            <label className="edit-field">Summary
+              <textarea aria-label={`Edit experience summary at ${value.employer}`} value={value.summary ?? ""}
+                onChange={(event) => setExperience((items) => items.map((item) => item.id === id
+                  ? { ...item, accepted: false, value: { ...item.value, summary: event.target.value || null } }
+                  : item,
+                ))} />
+            </label>
+            {value.evidence && <blockquote>{value.evidence}</blockquote>}
+            {value.source_ref && <span className="muted">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>}
+          </li>
+        ))}
+      </SuggestionSection>
+    </div>
+  );
+}
+
+function SuggestionSection({
+  title,
+  emptyText,
+  hasItems,
+  children,
+}: {
+  title: string;
+  emptyText: string;
+  hasItems: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <h4>{title}</h4>
+      {hasItems ? <ul className="suggestion-list">{children}</ul> : <p className="muted">{emptyText}</p>}
+    </section>
+  );
+}
+
+export default function DocumentIntelligence({
+  provider,
+}: {
+  provider: HealthResponse["provider"];
+}) {
+  const [mode, setMode] = useState<AnalysisMode>("jd");
+  const [file, setFile] = useState<File | null>(null);
+  const [result, setResult] = useState<ExtractionResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const isExternalResume = mode === "resume" && provider.external;
+  const termsReviewed = provider.configured && provider.resume_processing_allowed;
+  const blocked = isExternalResume && !termsReviewed;
+  const consentRequired = isExternalResume && termsReviewed;
+  const canSubmit = Boolean(
+    file && provider.configured && !busy && (!blocked && (!consentRequired || consent)),
+  );
+
+  function chooseMode(nextMode: AnalysisMode) {
+    setMode(nextMode);
+    setFile(null);
+    setResult(null);
+    setError(null);
+    setConsent(false);
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!file || !canSubmit) return;
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      const extracted = mode === "jd"
+        ? await api.analyzeJd(file)
+        : await api.parseResume(file, consent);
+      setResult(extracted);
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "The document could not be analyzed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="document-panel" aria-labelledby="document-intelligence-title">
+      <div className="section-heading">
+        <div>
+          <h2 id="document-intelligence-title">Document intelligence</h2>
+          <p className="muted">Analyze one job description or review editable resume suggestions.</p>
+        </div>
+        <span className={`badge ${provider.configured ? "badge-ready" : ""}`}>
+          {provider.configured ? `Provider: ${provider.name}` : "Provider not configured"}
+        </span>
+      </div>
+
+      <div className="mode-tabs" role="tablist" aria-label="Document type">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "jd"}
+          onClick={() => chooseMode("jd")}
+        >
+          Job description
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "resume"}
+          onClick={() => chooseMode("resume")}
+        >
+          Resume
+        </button>
+      </div>
+
+      <form className="upload-form" onSubmit={submit}>
+        <label htmlFor="document-file">
+          {mode === "jd" ? "Job description" : "Resume"} (PDF or DOCX)
+          <input
+            id="document-file"
+            type="file"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={(event) => {
+              setFile(event.target.files?.[0] ?? null);
+              setResult(null);
+              setError(null);
+            }}
+          />
+        </label>
+
+        {mode === "resume" && provider.external && (
+          <div className="privacy-block">
+            {blocked ? (
+              <p className="notice" role="note">
+                External resume processing is blocked. An administrator must review the selected
+                provider’s current terms before enabling it.
+              </p>
+            ) : (
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(event) => setConsent(event.target.checked)}
+                  disabled={!termsReviewed}
+                />
+                I reviewed the provider’s current terms and consent to send this redacted resume
+                for parsing.
+              </label>
+            )}
+          </div>
+        )}
+
+        {!provider.configured && (
+          <p className="notice" role="note">
+            Configure an available backend provider to analyze documents. The default local mock
+            mode works without credentials.
+          </p>
+        )}
+        <p className="muted privacy-note">
+          Uploads are processed for this request only. The app does not save raw resume files.
+        </p>
+        <button type="submit" disabled={!canSubmit}>
+          {busy ? "Analyzing…" : mode === "jd" ? "Analyze job description" : "Parse resume"}
+        </button>
+      </form>
+
+      {error && <p className="error" role="alert">{error}</p>}
+      {result && <ExtractionReview result={result} />}
+    </section>
+  );
+}

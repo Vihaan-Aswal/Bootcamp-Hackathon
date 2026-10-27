@@ -9,7 +9,7 @@ database schema or secret was copied from it.
 
 ## Current state
 
-Milestone **M1 — foundation and shared contract** is implemented:
+Milestones **M1 — foundation and shared contract** and **M2 — document intelligence** are implemented:
 
 - independent FastAPI backend and React/Vite/TypeScript frontend, both runnable;
 - versioned Pydantic v2 contract (`backend/app/contracts/v1.py`) plus a flat provider DTO;
@@ -17,11 +17,17 @@ Milestone **M1 — foundation and shared contract** is implemented:
 - versioned skill registry: 12 RADIX categories, the supplied 10-level topic ladder and an
   approved skill/alias list used for deterministic matching;
 - single company-data loader for the local 12-skill snapshot, with provenance and hash.
+- one shared PDF/DOCX parser with page/paragraph locations, scanned-PDF OCR-required errors,
+  upload/archive limits, evidence-quote verification, and guaranteed request upload cleanup;
+- JD Analytics and Resume Parsing endpoints returning the shared contract with source evidence;
+- a no-network local mock provider, plus single-provider OpenRouter, Groq, Gemini and
+  OpenAI-compatible HTTP adapters; all model output is validated locally with Pydantic;
+- a candidate screen for document uploads, evidence review and explicit resume-processing consent.
 
-The five modules (JD Analytics, Resume Parsing, Profile Builder, Talent Check, Skill Matching)
-are scaffolded but not built yet; `GET /api/v1/health` reports them as `planned`. The local
-`prd.md` and `implementation_plan.md` hold the full requirements and step-by-step plan. They are
-intentionally excluded from Git, so they are not linked here.
+Profile Builder is scheduled for M3; Talent Check and Skill Matching are scheduled for M4.
+`GET /api/v1/health` reports those modules as `planned` and reports M2 modules as `ready`.
+The local `prd.md` and `implementation_plan.md` hold planning details and are intentionally
+excluded from Git.
 
 ```text
 backend/     FastAPI service: contracts, registry, company-data loader, tests
@@ -42,6 +48,7 @@ uv pip install -e ".[dev]"
 uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000/docs
 uv run pytest
 uv run ruff check .
+uv run python scripts/evaluate_document_samples.py # Local offline acceptance check
 
 # Frontend, from frontend/
 npm install
@@ -54,6 +61,13 @@ npm run generate:api-types                # re-export OpenAPI and regenerate src
 
 `npm run generate:api-types` runs the backend export script with `uv`, writes the ignored
 `frontend/openapi.json` and regenerates the committed TypeScript types.
+
+The document endpoints are `POST /api/v1/jds/analyze` and `POST /api/v1/resumes/parse`.
+The offline evaluator reads the ignored official sample pack locally and prints only aggregate
+skill-extraction counts; it never sends documents to a provider or prints sample contents.
+Current local mock results are 6/6 JD pairs and 4/4 resume pairs with at least one
+evidence-backed skill suggestion. The local mock identifies explicit skills in the registry;
+these counts do not represent a live-provider quality evaluation.
 
 ## Shared contract (v1)
 
@@ -91,6 +105,19 @@ parser element ids; the backend attaches locations and builds the domain objects
 
 - Provider keys live only in `backend/.env` (`backend/.env.example` lists the variables) and
   are never exposed through `VITE_*` variables.
+- `LLM_PROVIDER=mock` is the no-credential default. It performs deterministic local registry-term
+  extraction and makes no network calls; it is useful for offline demos, not a substitute for a
+  live model's broader extraction ability.
+- External resume processing is blocked by default. After checking the selected provider's current
+  retention and training terms, an administrator may set `LLM_RESUME_PROCESSING_ALLOWED=true`;
+  each resume upload still requires a separate user consent checkbox. Names, email addresses and
+  phone patterns are redacted locally before the request. Evidence is checked against the original
+  parser elements, which remain in memory only for that request.
+- Provider adapters make one vendor selection per request, use no tools or database access, and do
+  not log document content. Structural output gets at most one bounded retry. Provider credentials,
+  timeouts and missing models produce safe errors without response-body details.
+- Groq constrained JSON Schema mode is used only for model IDs currently documented for strict
+  output; other Groq models use JSON-object mode and the same local Pydantic validation.
 - `frontend/.env.example` holds only the separate Supabase project's browser-safe URL and
   publishable/anon key. The service-role key is never used by this app.
 
