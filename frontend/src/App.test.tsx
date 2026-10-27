@@ -131,4 +131,271 @@ describe("foundation screen", () => {
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(screen.getByText(/uv run uvicorn/)).toBeTruthy();
   });
+
+  it.each([
+    {
+      candidate: "Candidate Alpha",
+      email: "alpha@example.com",
+      resumeSkill: "Python",
+      resumeSkillId: "python",
+      jdSkill: "Python",
+      jdSkillId: "python",
+      matchScore: 100,
+      readinessScore: 88,
+    },
+    {
+      candidate: "Candidate Beta",
+      email: "beta@example.com",
+      resumeSkill: "SQL",
+      resumeSkillId: "sql",
+      jdSkill: "Python",
+      jdSkillId: "python",
+      matchScore: 0,
+      readinessScore: 42,
+    },
+  ])(
+    "runs JD analysis, resume merge, profile save, Talent Check and Skill Match for $candidate",
+    async (scenario) => {
+      const categoryRows = [
+        ["COD", "Coding"],
+        ["DSA", "Data Structures and Algorithms"],
+        ["OOD", "Object-Oriented Programming and Design"],
+        ["APTI", "Aptitude and Problem Solving"],
+        ["COMM", "Communication Skills"],
+        ["AI", "AI Native Engineering"],
+        ["CLOUD", "DevOps and Cloud"],
+        ["SQL", "SQL and Design"],
+        ["SWE", "Software Engineering"],
+        ["SYSD", "System Design and Architecture"],
+        ["NETW", "Computer Networking"],
+        ["OS", "Operating System"],
+      ] as const;
+      const companies = {
+        data_version: dataVersion,
+        source_status: "provisional_csv_fallback",
+        official_json_confirmed: false,
+        source_note: "CSV-derived fallback.",
+        companies: [{ company_id: "google", display_name: "Google" }],
+      };
+      const categoryData = {
+        registry_version: "1.0.0",
+        categories: categoryRows.map(([code, name]) => ({
+          code,
+          name,
+          levels: Array.from({ length: 10 }, (_, index) => ({
+            level: index + 1,
+            topics: [`${name} level ${index + 1}`],
+          })),
+        })),
+        warnings: [],
+      };
+      const companyBar = {
+        company_id: "google",
+        display_name: "Google",
+        skillsets: categoryRows.map(([category_code, category_name]) => ({
+          category_code,
+          category_name,
+          required_level: 7,
+          bloom_code: null,
+          source_value: null,
+        })),
+      };
+      const sourceRef = (filename: string) => ({
+        element_id: "docx-1",
+        filename,
+        page: null,
+        paragraph: 1,
+        heading: "Requirements",
+      });
+      const jdSkill = {
+        skill_name: scenario.jdSkill,
+        skill_id: scenario.jdSkillId,
+        category_code: scenario.jdSkillId === "sql" ? "SQL" : "COD",
+        evidence: `${scenario.jdSkill} is required for this role.`,
+        evidence_status: "exact",
+        confidence: "high",
+        requirement_type: "required",
+        origin: "jd",
+        source_ref: sourceRef("role.docx"),
+      };
+      const jdResult = {
+        schema_version: "1.0.0",
+        document_id: "11111111-1111-4111-8111-111111111111",
+        source_type: "jd",
+        filename: "role.docx",
+        company: "RADIX Demo",
+        role: "Demo role",
+        skills: [jdSkill],
+        education: [],
+        projects: [],
+        experience: [],
+        metadata: {
+          provider: "mock",
+          model: "local-registry-rules",
+          extracted_at: "2026-10-28T00:00:00Z",
+          source_format: "docx",
+          element_count: 2,
+          page_count: null,
+          redaction_applied: false,
+          warnings: [],
+        },
+        rejected_claims: [],
+      };
+      const resumeResult = {
+        ...jdResult,
+        document_id: "22222222-2222-4222-8222-222222222222",
+        source_type: "resume",
+        filename: "resume.docx",
+        company: null,
+        role: null,
+        skills: [{
+          ...jdSkill,
+          skill_name: scenario.resumeSkill,
+          skill_id: scenario.resumeSkillId,
+          category_code: scenario.resumeSkillId === "sql" ? "SQL" : "COD",
+          evidence: `I have used ${scenario.resumeSkill}.`,
+          requirement_type: null,
+          origin: "resume",
+          source_ref: sourceRef("resume.docx"),
+        }],
+        metadata: { ...jdResult.metadata, redaction_applied: true },
+      };
+      const validatedProfiles: Record<string, unknown>[] = [];
+      const matchRequests: Record<string, unknown>[] = [];
+      const health = {
+        ...bodies["/api/v1/health"] as Record<string, unknown>,
+        modules: [
+          { key: "jd_analytics", name: "JD Analytics", milestone: "M2", status: "ready" },
+          { key: "resume_parsing", name: "Resume Parsing", milestone: "M2", status: "ready" },
+          { key: "profile_builder", name: "Profile Builder", milestone: "M3", status: "ready" },
+          { key: "talent_check", name: "Talent Check", milestone: "M4", status: "ready" },
+          { key: "skill_matching", name: "Skill Matching", milestone: "M4", status: "ready" },
+        ],
+      };
+      vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = String(input);
+        if (path === "/api/v1/health") return jsonResponse(health);
+        if (path === "/api/v1/companies") return jsonResponse(companies);
+        if (path === "/api/v1/reference/skill-categories") return jsonResponse(categoryData);
+        if (path === "/api/v1/companies/google") return jsonResponse(companyBar);
+        if (path === "/api/v1/jds/analyze") return jsonResponse(jdResult);
+        if (path === "/api/v1/resumes/parse") return jsonResponse(resumeResult);
+        if (path === "/api/v1/profiles/validate") {
+          const profile = JSON.parse(String(init?.body)) as Record<string, unknown>;
+          validatedProfiles.push(profile);
+          return jsonResponse(profile);
+        }
+        if (path === "/api/v1/companies/google/talent-check") {
+          const profile = JSON.parse(String(init?.body)) as Record<string, unknown>;
+          const levels = profile.skillset_levels as { category_code: string; level: number }[];
+          return jsonResponse({
+            schema_version: "1.0.0",
+            company_id: "google",
+            profile_id: profile.profile_id,
+            company_data_version: dataVersion,
+            status: "complete",
+            readiness_score: scenario.readinessScore,
+            missing_categories: [],
+            rows: categoryRows.map(([category_code, category_name]) => ({
+              category_code,
+              category_name,
+              required_level: 7,
+              candidate_level: levels.find((row) => row.category_code === category_code)?.level ?? null,
+              gap: false,
+              gap_size: 0,
+              bloom_code: null,
+            })),
+            formula_version: "readiness_v1",
+          });
+        }
+        if (path === "/api/v1/skill-matches/score") {
+          const request = JSON.parse(String(init?.body)) as {
+            profile: { profile_id: string; skills: { skill_id?: string | null }[] };
+            jd: { document_id: string; skills: typeof jdResult.skills };
+          };
+          matchRequests.push(request as unknown as Record<string, unknown>);
+          const matched = request.profile.skills.some((skill) => skill.skill_id === scenario.jdSkillId);
+          return jsonResponse({
+            schema_version: "1.0.0",
+            jd_document_id: request.jd.document_id,
+            profile_id: request.profile.profile_id,
+            status: "scorable",
+            match_score: matched ? 100 : 0,
+            distinct_required_skill_count: 1,
+            matched: matched ? request.jd.skills : [],
+            missing_required: matched ? [] : request.jd.skills,
+            preferred: [],
+            mentioned: [],
+            unclear: [],
+            possible: [],
+            requirement_evidence: [],
+            match_methods: matched ? ["registry_id"] : [],
+            registry_version: "1.0.0",
+            formula_version: "match_v1",
+          });
+        }
+        return { ok: false, status: 404, json: async () => ({ detail: "Not found" }) } as Response;
+      }));
+
+      render(<App />);
+      expect(await screen.findByText(/M3 profile builder/)).toBeTruthy();
+
+      const jdFile = new File(["Required: Python is needed."], "role.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+      fireEvent.change(screen.getByLabelText(/Job description \(PDF or DOCX\)/), {
+        target: { files: [jdFile] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Analyze job description" }));
+      expect(await screen.findByText(`${scenario.jdSkill} is required for this role.`)).toBeTruthy();
+
+      const resumeFile = new File(["I have used a documented skill."], "resume.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+      fireEvent.change(screen.getByLabelText("Choose resume (PDF or DOCX)"), {
+        target: { files: [resumeFile] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Parse and merge suggestions" }));
+      expect(await screen.findByText("Resume suggestions merged. Review every item before saving.")).toBeTruthy();
+
+      fireEvent.change(screen.getByLabelText("Full name"), { target: { value: scenario.candidate } });
+      fireEvent.change(screen.getByLabelText("Email"), { target: { value: scenario.email } });
+      for (const [, categoryName] of categoryRows) {
+        fireEvent.change(screen.getByLabelText(`${categoryName} self-reported rating`), {
+          target: { value: "5" },
+        });
+      }
+      fireEvent.submit(screen.getByLabelText("Full name").closest("form")!);
+      expect(await screen.findByText("Profile saved.")).toBeTruthy();
+      expect(validatedProfiles).toHaveLength(1);
+      expect(validatedProfiles[0].cv_filename).toBe("resume.docx");
+      expect(validatedProfiles[0].skills).toEqual(resumeResult.skills);
+      expect(validatedProfiles[0]).not.toHaveProperty("raw_resume_text");
+      expect((validatedProfiles[0].skillset_levels as unknown[]).length).toBe(12);
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Run Talent Check" })).toHaveProperty("disabled", false));
+      fireEvent.click(screen.getByRole("button", { name: "Run Talent Check" }));
+      const talentPanel = within(screen.getByRole("region", { name: "Talent Check" }));
+      await waitFor(() => {
+        const score = talentPanel.getByText((_, element) =>
+          Boolean(element?.classList.contains("readiness-score")),
+        );
+        expect(score.textContent).toContain(
+          `Self-reported readiness indicator: ${scenario.readinessScore}%`,
+        );
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Run Skill Match" }));
+      const matchPanel = within(screen.getByRole("region", { name: "Skill Matching" }));
+      await waitFor(() => {
+        const score = matchPanel.getByText((_, element) =>
+          Boolean(element?.classList.contains("readiness-score")),
+        );
+        expect(score.textContent).toContain(`Required-skill match: ${scenario.matchScore}%`);
+      });
+      expect(matchRequests).toHaveLength(1);
+      const request = matchRequests[0] as unknown as {
+        profile: { skills: { skill_id?: string | null }[] };
+        jd: { filename: string };
+      };
+      expect(request.profile.skills.some((skill) => skill.skill_id === scenario.resumeSkillId)).toBe(true);
+      expect(request.jd.filename).toBe("role.docx");
+    },
+  );
 });

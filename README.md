@@ -10,8 +10,10 @@ database schema or secret was copied from it.
 ## Current state
 
 Milestones **M1 — foundation and shared contract**, **M2 — document intelligence**,
-**M3 — Profile Builder and persistence**, and the local implementation of **M4 — Talent Check
-and Skill Matching** are implemented:
+**M3 — Profile Builder and persistence**, and **M4 — Talent Check and Skill Matching** have
+local implementations. M5 integration checks and walkthrough preparation are in place; official
+role scoring with a configured provider and a human demo rehearsal remain pending. See
+[`docs/m5_walkthrough.md`](docs/m5_walkthrough.md) for evidence and exact next steps.
 
 - independent FastAPI backend and React/Vite/TypeScript frontend, both runnable;
 - versioned Pydantic v2 contract (`backend/app/contracts/v1.py`) plus a flat provider DTO;
@@ -33,9 +35,13 @@ and Skill Matching** are implemented:
   and calculates capped equal-weighted readiness with per-skillset gaps;
 - deterministic JD skill matching with approved aliases, separate required/preferred/mentioned/
   unclear groups, missing requirements, and explicit confirmation for fuzzy suggestions.
+- API and single-screen integration coverage across all five modules, plus labelled synthetic DOCX
+  fixtures that exercise two roles and two distinct candidate results with the local mock provider.
 
-`GET /api/v1/health` reports implemented M2–M4 modules as `ready`. M5 integration and final review
-remain.
+`GET /api/v1/health` reports the implemented modules as `ready`. Official-sample parsing currently
+meets the local mock thresholds (6/6 JDs and 4/4 resumes); the mock deliberately does not promote
+incidental skill mentions to required skills, so official role scores still need a configured
+provider run. The synthetic fixtures are a demo fallback, not official acceptance data.
 The local `prd.md` and `implementation_plan.md` hold planning details and are intentionally
 excluded from Git.
 
@@ -59,6 +65,7 @@ uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000/docs
 uv run pytest
 uv run ruff check .
 uv run python scripts/evaluate_document_samples.py # Local offline acceptance check
+uv run python scripts/evaluate_synthetic_demo.py   # Two-role offline demo score check
 
 # Frontend, from frontend/
 npm install
@@ -77,11 +84,12 @@ The document endpoints are `POST /api/v1/jds/analyze` and `POST /api/v1/resumes/
 Pydantic v2 contract. `POST /api/v1/companies/{company_id}/talent-check` scores a validated
 profile against the selected local company bar. `POST /api/v1/skill-matches/score` accepts the
 validated profile, a JD Analytics result and any explicit fuzzy-match decisions.
-The offline evaluator reads the ignored official sample pack locally and prints only aggregate
-skill-extraction counts; it never sends documents to a provider or prints sample contents.
-Current local mock results are 6/6 JD pairs and 4/4 resume pairs with at least one
-evidence-backed skill suggestion. The local mock identifies explicit skills in the registry;
-these counts do not represent a live-provider quality evaluation.
+The offline official-sample evaluator reads the ignored sample pack locally and prints only
+aggregate skill-extraction counts; it never sends documents to a provider or prints sample
+contents. Current mock results are 6/6 JD pairs and 4/4 resume pairs with evidence-backed skills.
+Run `uv run python scripts/evaluate_synthetic_demo.py` from `backend/` for two scoreable offline
+roles and two synthetic candidate profiles. These synthetic results do not count toward the
+official JD/role acceptance item.
 
 ## Shared contract (v1)
 
