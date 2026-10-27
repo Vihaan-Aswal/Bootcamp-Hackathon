@@ -47,6 +47,9 @@ def test_health_reports_the_contract_and_data_state(client: TestClient) -> None:
         "talent_check",
         "skill_matching",
     }
+    module_statuses = {module["key"]: module["status"] for module in payload["modules"]}
+    assert module_statuses["profile_builder"] == "ready"
+    assert module_statuses["talent_check"] == "planned"
 
 
 def test_company_list_matches_the_dataset(client: TestClient) -> None:
@@ -63,6 +66,26 @@ def test_company_detail_returns_twelve_rows(client: TestClient) -> None:
     assert payload["company_id"] == "google"
     assert len(payload["skillsets"]) == 12
     assert {row["category_code"] for row in payload["skillsets"]}.isdisjoint({"OTHER"})
+
+
+def test_profile_validation_endpoint_accepts_contract_profile(
+    client: TestClient, fixture_json
+) -> None:
+    payload = fixture_json("candidate_profile.json")
+    response = client.post("/api/v1/profiles/validate", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["profile_id"] == payload["profile_id"]
+
+
+def test_profile_validation_endpoint_rejects_unknown_fields(
+    client: TestClient, fixture_json
+) -> None:
+    payload = fixture_json("candidate_profile.json")
+    payload["private_resume_text"] = "must not be stored"
+    response = client.post("/api/v1/profiles/validate", json=payload)
+
+    assert response.status_code == 422
 
 
 def test_unknown_company_returns_404(client: TestClient) -> None:
@@ -131,3 +154,6 @@ def test_openapi_publishes_every_contract_object() -> None:
     ):
         assert name in components
     assert components["CandidateProfile"]["properties"]["skillset_levels"]
+    assert components["CandidateProfile"]["properties"]["projects"]
+    assert components["CandidateProfile"]["properties"]["experience"]
+    assert "/api/v1/profiles/validate" in schema["paths"]

@@ -106,6 +106,19 @@ def test_profile_without_twelve_ratings_is_a_valid_draft(
     assert CategoryCode.OTHER not in profile.missing_rating_categories
 
 
+def test_profile_can_keep_editable_resume_projects_and_experience(
+    fixture_json: Callable[[str], Any],
+) -> None:
+    payload = fixture_json("candidate_profile.json")
+    payload["projects"] = [{"name": "Inventory tool", "summary": "Built a small demo"}]
+    payload["experience"] = [{"employer": "Example Co", "title": "Intern"}]
+
+    profile = CandidateProfile.model_validate(payload)
+
+    assert profile.projects[0].name == "Inventory tool"
+    assert profile.experience[0].employer == "Example Co"
+
+
 def test_complete_profile_has_no_missing_ratings(
     fixture_json: Callable[[str], Any],
 ) -> None:

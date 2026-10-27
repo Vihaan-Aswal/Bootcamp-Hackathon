@@ -12,6 +12,7 @@
     "generate:api-types": "uv run --project ../backend python ../backend/scripts/export_openapi.py && openapi-typescript openapi.json -o src/lib/api-types.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "~2.100.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

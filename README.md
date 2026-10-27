@@ -9,7 +9,8 @@ database schema or secret was copied from it.
 
 ## Current state
 
-Milestones **M1 — foundation and shared contract** and **M2 — document intelligence** are implemented:
+Milestones **M1 — foundation and shared contract**, **M2 — document intelligence**, and the
+local implementation of **M3 — Profile Builder and persistence** are implemented:
 
 - independent FastAPI backend and React/Vite/TypeScript frontend, both runnable;
 - versioned Pydantic v2 contract (`backend/app/contracts/v1.py`) plus a flat provider DTO;
@@ -23,16 +24,20 @@ Milestones **M1 — foundation and shared contract** and **M2 — document intel
 - a no-network local mock provider, plus single-provider OpenRouter, Groq, Gemini and
   OpenAI-compatible HTTP adapters; all model output is validated locally with Pydantic;
 - a candidate screen for document uploads, evidence review and explicit resume-processing consent.
+- an editable profile form for resume suggestions, education, projects, experience, activities,
+  preferred roles and all 12 optional self-reported ratings;
+- JSON import/export, a local browser-storage adapter, and a browser Supabase repository protected
+  by per-session row-level ownership policies.
 
-Profile Builder is scheduled for M3; Talent Check and Skill Matching are scheduled for M4.
-`GET /api/v1/health` reports those modules as `planned` and reports M2 modules as `ready`.
+Talent Check and Skill Matching are scheduled for M4. `GET /api/v1/health` reports the M2 and M3
+modules as `ready` and reports M4 modules as `planned`.
 The local `prd.md` and `implementation_plan.md` hold planning details and are intentionally
 excluded from Git.
 
 ```text
 backend/     FastAPI service: contracts, registry, company-data loader, tests
 frontend/    React/Vite/TypeScript candidate application
-supabase/    App-specific migrations and database checks (added in M3)
+supabase/    App-specific migrations, local CLI config and RLS checks
 data/        Reference data and local sample inputs
 references/  Source PDFs and the checklist workbook (local only)
 ```
@@ -63,6 +68,8 @@ npm run generate:api-types                # re-export OpenAPI and regenerate src
 `frontend/openapi.json` and regenerates the committed TypeScript types.
 
 The document endpoints are `POST /api/v1/jds/analyze` and `POST /api/v1/resumes/parse`.
+`POST /api/v1/profiles/validate` validates profile saves and imports through the canonical
+Pydantic v2 contract.
 The offline evaluator reads the ignored official sample pack locally and prints only aggregate
 skill-extraction counts; it never sends documents to a provider or prints sample contents.
 Current local mock results are 6/6 JD pairs and 4/4 resume pairs with at least one
@@ -120,6 +127,33 @@ parser element ids; the backend attaches locations and builds the domain objects
   output; other Groq models use JSON-object mode and the same local Pydantic validation.
 - `frontend/.env.example` holds only the separate Supabase project's browser-safe URL and
   publishable/anon key. The service-role key is never used by this app.
+
+## Profile storage
+
+With both Supabase values empty, profiles stay in this browser's local storage. Use the profile
+JSON export for a portable backup. When both values are configured, the browser starts a persistent
+anonymous Auth session and stores profile JSON in `public.rtm_candidate_profiles`; RLS scopes every
+operation to `auth.uid()`. A configured Supabase error is shown to the user and does not silently
+fall back to local storage.
+
+To enable cloud storage, create a **separate Supabase project for RADIX Talent Match**, enable
+anonymous sign-ins in its Auth settings, and apply
+`supabase/migrations/20261028090000_rtm_candidate_profiles.sql` through that project's SQL Editor.
+Put its project URL and publishable key in `frontend/.env.local` as
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, then restart Vite. Never add a service-role
+key to the frontend. The project has not been linked to a live Supabase account in this workspace.
+
+The local Supabase CLI config enables anonymous sign-ins. With Docker Desktop running, validate the
+migration and ownership checks from the repository root:
+
+```powershell
+npx supabase start
+npx supabase test db
+npx supabase stop
+```
+
+The SQL test covers two anonymous owners and an unauthenticated `anon` role. The test has not yet
+run in this workspace because the Docker engine was unavailable.
 
 ## Local planning files
 

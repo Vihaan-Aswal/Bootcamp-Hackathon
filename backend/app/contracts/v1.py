@@ -286,6 +286,8 @@ class CandidateProfile(VersionedContractModel):
     basic_details: BasicDetails
     skills: list[Skill] = Field(default_factory=list, max_length=200)
     education: list[EducationItem] = Field(default_factory=list, max_length=50)
+    projects: list[ProjectItem] = Field(default_factory=list, max_length=50)
+    experience: list[ExperienceItem] = Field(default_factory=list, max_length=50)
     hackathons: list[HackathonEntry] = Field(default_factory=list, max_length=50)
     internships: list[InternshipEntry] = Field(default_factory=list, max_length=50)
     certifications: list[CertificationEntry] = Field(default_factory=list, max_length=50)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import companies, health, jds, reference, resumes
+from app.api.routes import companies, health, jds, profiles, reference, resumes
 from app.config import settings
 from app.contracts.v1 import CONTRACT_VERSION
 
@@ -30,6 +30,7 @@ api = APIRouter(prefix="/api/v1")
 api.include_router(health.router)
 api.include_router(reference.router)
 api.include_router(companies.router)
+api.include_router(profiles.router)
 api.include_router(jds.router)
 api.include_router(resumes.router)
 app.include_router(api)

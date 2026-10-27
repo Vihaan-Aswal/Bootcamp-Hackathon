@@ -24,10 +24,16 @@
 **/coverage/
 
 # Local files, generated uploads and temporary data
-/uploads/
-/tmp/
+**/uploads/
+**/tmp/
+**/.temp/
+**/MANIFEST.local.md
 *.log
 *.tmp
+
+# Supabase CLI state is local; migrations and SQL tests remain trackable
+/supabase/.branches/
+/supabase/.temp/
 
 # Generated OpenAPI snapshot; recreate with `npm run generate:api-types`
 /frontend/openapi.json

@@ -75,6 +75,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/profiles/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate a candidate profile against contract v1
+         * @description Apply the canonical Pydantic contract before import or persistence.
+         */
+        post: operations["validate_profile_api_v1_profiles_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reference/skill-categories": {
         parameters: {
             query?: never;
@@ -151,13 +171,12 @@ export interface components {
              * Format: date-time
              */
             created_at?: string;
-            /**
-             * Cv Filename
-             * @default null
-             */
-            cv_filename: string | null;
+            /** Cv Filename */
+            cv_filename?: string | null;
             /** Education */
             education?: components["schemas"]["EducationItem"][];
+            /** Experience */
+            experience?: components["schemas"]["ExperienceItem"][];
             /** Hackathons */
             hackathons?: components["schemas"]["HackathonEntry"][];
             /** Internships */
@@ -169,6 +188,8 @@ export interface components {
              * Format: uuid
              */
             profile_id?: string;
+            /** Projects */
+            projects?: components["schemas"]["ProjectItem"][];
             /**
              * Schema Version
              * @default 1.0.0
@@ -192,18 +213,12 @@ export interface components {
         CategoryCode: "COD" | "DSA" | "OOD" | "APTI" | "COMM" | "AI" | "CLOUD" | "SQL" | "SWE" | "SYSD" | "NETW" | "OS" | "OTHER";
         /** CertificationEntry */
         CertificationEntry: {
-            /**
-             * Issuer
-             * @default null
-             */
-            issuer: string | null;
+            /** Issuer */
+            issuer?: string | null;
             /** Name */
             name: string;
-            /**
-             * Year
-             * @default null
-             */
-            year: number | null;
+            /** Year */
+            year?: number | null;
         };
         /** CompanyDataStatus */
         CompanyDataStatus: {
@@ -444,16 +459,10 @@ export interface components {
         HackathonEntry: {
             /** Name */
             name: string;
-            /**
-             * Summary
-             * @default null
-             */
-            summary: string | null;
-            /**
-             * Year
-             * @default null
-             */
-            year: number | null;
+            /** Summary */
+            summary?: string | null;
+            /** Year */
+            year?: number | null;
         };
         /** HealthResponse */
         HealthResponse: {
@@ -477,21 +486,12 @@ export interface components {
         InternshipEntry: {
             /** Employer */
             employer: string;
-            /**
-             * Role
-             * @default null
-             */
-            role: string | null;
-            /**
-             * Summary
-             * @default null
-             */
-            summary: string | null;
-            /**
-             * Year
-             * @default null
-             */
-            year: number | null;
+            /** Role */
+            role?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Year */
+            year?: number | null;
         };
         /** LevelTopic */
         LevelTopic: {
@@ -676,11 +676,8 @@ export interface components {
          */
         SkillsetLevel: {
             category_code: components["schemas"]["CategoryCode"];
-            /**
-             * Evidence Note
-             * @default null
-             */
-            evidence_note: string | null;
+            /** Evidence Note */
+            evidence_note?: string | null;
             /** Level */
             level: number;
             /**
@@ -900,6 +897,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExtractionResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_profile_api_v1_profiles_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateProfile"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateProfile"];
                 };
             };
             /** @description Validation Error */

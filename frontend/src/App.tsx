@@ -1,17 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { api } from "./lib/api";
+import type { CandidateProfile } from "./lib/api";
 import DocumentIntelligence from "./DocumentIntelligence";
+import ProfileBuilder from "./ProfileBuilder";
+import { createProfileRepository } from "./lib/profileRepository";
 import type {
   CompanyListResponse,
   HealthResponse,
   SkillCategoryListResponse,
 } from "./lib/api";
 
+function newProfileId(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === "x" ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
 export default function App() {
+  const profileRepository = useMemo(() => createProfileRepository(api.validateProfile), []);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [companies, setCompanies] = useState<CompanyListResponse | null>(null);
   const [categories, setCategories] = useState<SkillCategoryListResponse | null>(null);
+  const [profiles, setProfiles] = useState<CandidateProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,6 +47,64 @@ export default function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    profileRepository
+      .loadAll()
+      .then((savedProfiles) => {
+        if (!cancelled) setProfiles(savedProfiles);
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) {
+          setProfileError(reason instanceof Error ? reason.message : String(reason));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileRepository]);
+
+  const saveProfile = async (profile: CandidateProfile) => {
+    const saved = await profileRepository.save(profile);
+    const savedProfileId = saved.profile_id;
+    if (!savedProfileId) throw new Error("The validated profile is missing its profile ID.");
+    setProfiles((current) => [saved, ...current.filter((item) => item.profile_id !== saved.profile_id)]);
+    setSelectedProfileId(savedProfileId);
+    setProfileError(null);
+    return saved;
+  };
+
+  const importProfile = async (jsonText: string) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(jsonText) as unknown;
+    } catch {
+      throw new Error("Choose a valid profile JSON file.");
+    }
+    const validated = await api.validateProfile(parsed);
+    const now = new Date().toISOString();
+    const imported: CandidateProfile = {
+      ...validated,
+      profile_id: newProfileId(),
+      created_at: now,
+      updated_at: now,
+    };
+    const saved = await profileRepository.save(imported);
+    const savedProfileId = saved.profile_id;
+    if (!savedProfileId) throw new Error("The imported profile is missing its profile ID.");
+    setProfiles((current) => [saved, ...current.filter((item) => item.profile_id !== saved.profile_id)]);
+    setSelectedProfileId(savedProfileId);
+    setProfileError(null);
+    return saved;
+  };
+
+  const deleteProfile = async (profileId: string) => {
+    await profileRepository.delete(profileId);
+    setProfiles((current) => current.filter((item) => item.profile_id !== profileId));
+    if (selectedProfileId === profileId) setSelectedProfileId(null);
+    setProfileError(null);
+  };
 
   if (error) {
     return (
@@ -61,7 +135,7 @@ export default function App() {
       <header>
         <h1>RADIX Talent Match</h1>
         <p className="subtitle">
-          {`M2 document intelligence · contract v${health.contract_version}, skill registry v${health.registry_version}`}
+          {`M3 profile builder · contract v${health.contract_version}, skill registry v${health.registry_version}`}
         </p>
       </header>
 
@@ -74,6 +148,22 @@ export default function App() {
       )}
 
       <DocumentIntelligence provider={health.provider} />
+
+      {profileError && <p className="error" role="alert">Profile storage: {profileError}</p>}
+      <ProfileBuilder
+        profiles={profiles}
+        selectedProfileId={selectedProfileId}
+        onSelect={setSelectedProfileId}
+        onSave={saveProfile}
+        onDelete={deleteProfile}
+        onImport={importProfile}
+        onParseResume={(file, allowExternalProcessing) =>
+          api.parseResume(file, allowExternalProcessing)
+        }
+        categories={categories}
+        provider={health.provider}
+        storageMode={profileRepository.mode}
+      />
 
       <section>
         <h2>Modules</h2>
