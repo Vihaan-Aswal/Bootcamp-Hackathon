@@ -30,6 +30,8 @@ export default function App() {
   const [profiles, setProfiles] = useState<CandidateProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [jdResult, setJdResult] = useState<ExtractionResult | null>(null);
+  const [reviewedResumeSuggestions, setReviewedResumeSuggestions] =
+    useState<ExtractionResult | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -150,7 +152,11 @@ export default function App() {
         </ul>
       )}
 
-      <DocumentIntelligence provider={health.provider} onJdAnalyzed={setJdResult} />
+      <DocumentIntelligence
+        provider={health.provider}
+        onJdAnalyzed={setJdResult}
+        onResumeAccepted={setReviewedResumeSuggestions}
+      />
 
       {profileError && <p className="error" role="alert">Profile storage: {profileError}</p>}
       <ProfileBuilder
@@ -163,6 +169,7 @@ export default function App() {
         onParseResume={(file, allowExternalProcessing) =>
           api.parseResume(file, allowExternalProcessing)
         }
+        reviewedResumeSuggestions={reviewedResumeSuggestions}
         categories={categories}
         provider={health.provider}
         storageMode={profileRepository.mode}

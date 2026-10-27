@@ -10,6 +10,8 @@ const mockProvider: HealthResponse["provider"] = {
   supports_json_schema: false,
   external: false,
   resume_processing_allowed: true,
+  jd_processing_allowed: false,
+  route: ["mock/local-registry-rules"],
 };
 
 const externalProvider: HealthResponse["provider"] = {
@@ -18,6 +20,15 @@ const externalProvider: HealthResponse["provider"] = {
   supports_json_schema: true,
   external: true,
   resume_processing_allowed: true,
+  jd_processing_allowed: true,
+  route: [
+    "openrouter/dots-studio/dots-3-note-preview:free",
+    "openrouter/xingchen-agi/xing4.0-29b-a4b:free",
+    "openrouter/apodex/apodex-1.1-mini:free",
+    "openrouter/google/gemma-4-31b-it:free",
+    "openrouter/recursive/flint-v1.0:free",
+    "groq/openai/gpt-oss-120b",
+  ],
 };
 
 const extraction: ExtractionResult = {
@@ -99,6 +110,39 @@ describe("document intelligence screen", () => {
     expect((options.body as FormData).get("file")).toBe(file);
   });
 
+  it("requires per-upload consent before sending an external JD", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(extraction));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<DocumentIntelligence provider={externalProvider} />);
+
+    const file = new File(["mock JD text"], "role.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(screen.getByLabelText(/Job description \(PDF or DOCX\)/), {
+      target: { files: [file] },
+    });
+    const submit = screen.getByRole("button", { name: "Analyze job description" });
+    expect(submit).toHaveProperty("disabled", true);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByLabelText(/reviewed this route’s current terms and consent/i),
+    );
+    fireEvent.click(submit);
+
+    expect(await screen.findByText("Python is required for this role.")).toBeTruthy();
+    const [, options] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect((options.body as FormData).get("allow_external_processing")).toBe("true");
+  });
+
+  it("keeps external JD processing blocked until administrator terms review", () => {
+    render(
+      <DocumentIntelligence
+        provider={{ ...externalProvider, jd_processing_allowed: false }}
+      />,
+    );
+    expect(screen.getByText(/External job-description processing is blocked/)).toBeTruthy();
+    expect(screen.queryByLabelText(/consent to send this job description/i)).toBeNull();
+  });
+
   it("requires current-terms opt-in and user consent before external resume upload", async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ ...extraction, source_type: "resume" }));
     vi.stubGlobal("fetch", fetchMock);
@@ -114,7 +158,7 @@ describe("document intelligence screen", () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     fireEvent.click(
-      screen.getByLabelText(/reviewed the provider’s current terms and consent/i),
+      screen.getByLabelText(/reviewed this route’s current terms and consent/i),
     );
     fireEvent.click(submit);
 
@@ -170,5 +214,39 @@ describe("document intelligence screen", () => {
     );
     expect(screen.getByLabelText("Edit SQL")).toBeTruthy();
     expect(screen.queryByLabelText("Edit Python 3")).toBeNull();
+  });
+
+  it("passes only accepted resume suggestions to Profile Builder", () => {
+    const onResumeAccepted = vi.fn();
+    render(
+      <ExtractionReview result={resumeExtraction} onResumeAccepted={onResumeAccepted} />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Accept Python"));
+    fireEvent.click(screen.getByRole("button", { name: "Merge accepted suggestions into Profile Builder" }));
+
+    expect(onResumeAccepted).toHaveBeenCalledTimes(1);
+    const reviewed = onResumeAccepted.mock.calls[0][0];
+    expect(reviewed.skills).toHaveLength(1);
+    expect(reviewed.skills[0].skill_name).toBe("Python");
+    expect(reviewed.education).toEqual([]);
+    expect(reviewed.projects).toEqual([]);
+    expect(reviewed.experience).toEqual([]);
+  });
+
+  it("lets a reviewer confirm a JD requirement classification from the visible evidence", () => {
+    const onJdUpdated = vi.fn();
+    const unclassified = {
+      ...extraction,
+      skills: [{ ...extraction.skills![0], requirement_type: "mentioned" as const }],
+    };
+    render(<ExtractionReview result={unclassified} onJdUpdated={onJdUpdated} />);
+
+    fireEvent.change(screen.getByLabelText("Requirement classification for Python"), {
+      target: { value: "required" },
+    });
+
+    expect(onJdUpdated).toHaveBeenCalledTimes(1);
+    expect(onJdUpdated.mock.calls[0][0].skills![0].requirement_type).toBe("required");
   });
 });

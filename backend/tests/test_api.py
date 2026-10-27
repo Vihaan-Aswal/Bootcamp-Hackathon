@@ -25,7 +25,10 @@ def _load_export_script():
     return module
 
 
-def test_health_reports_the_contract_and_data_state(client: TestClient) -> None:
+def test_health_reports_the_contract_and_data_state(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "llm_provider", "mock")
     payload = client.get("/api/v1/health").json()
 
     assert payload["status"] == "ok"
@@ -39,6 +42,8 @@ def test_health_reports_the_contract_and_data_state(client: TestClient) -> None:
         "supports_json_schema": False,
         "external": False,
         "resume_processing_allowed": True,
+        "jd_processing_allowed": False,
+        "route": ["mock/local-registry-rules"],
     }
     assert {module["key"] for module in payload["modules"]} == {
         "jd_analytics",
@@ -185,6 +190,65 @@ def test_document_routes_return_safe_error_for_missing_provider_credentials(
     assert response.status_code == 503
     assert response.json()["detail"]["code"] == "PROVIDER_NOT_CONFIGURED"
     assert "API key" in response.json()["detail"]["message"]
+
+
+@pytest.mark.parametrize(
+    ("terms_allowed", "consent", "expected_code"),
+    [
+        (False, False, "EXTERNAL_JD_PROCESSING_DISABLED"),
+        (True, False, "EXTERNAL_JD_CONSENT_REQUIRED"),
+    ],
+)
+def test_external_jd_upload_requires_admin_review_and_user_consent(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    terms_allowed: bool,
+    consent: bool,
+    expected_code: str,
+) -> None:
+    monkeypatch.setattr(settings, "llm_provider", "openrouter")
+    monkeypatch.setattr(settings, "llm_model", "test-model")
+    monkeypatch.setattr(settings, "openrouter_api_key", "test-key")
+    monkeypatch.setattr(settings, "llm_jd_processing_allowed", terms_allowed)
+
+    response = client.post(
+        "/api/v1/jds/analyze",
+        files={"file": ("role.pdf", b"must not reach the provider", "application/pdf")},
+        data={"allow_external_processing": str(consent).lower()},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == expected_code
+
+
+def test_external_jd_with_admin_review_and_user_consent_calls_local_stub(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    fixture_json,
+) -> None:
+    from app.api.routes import jds
+    from app.contracts.v1 import ExtractionResult
+
+    monkeypatch.setattr(settings, "llm_provider", "openrouter")
+    monkeypatch.setattr(settings, "llm_model", "test-model")
+    monkeypatch.setattr(settings, "openrouter_api_key", "test-key")
+    monkeypatch.setattr(settings, "llm_jd_processing_allowed", True)
+    extraction = ExtractionResult.model_validate(fixture_json("jd_extraction.json"))
+    called: list[tuple[str | None, bytes]] = []
+
+    def analyze(filename, content, provider):
+        called.append((filename, content))
+        return extraction
+
+    monkeypatch.setattr(jds, "analyze_jd", analyze)
+    response = client.post(
+        "/api/v1/jds/analyze",
+        files={"file": ("role.pdf", b"local test content", "application/pdf")},
+        data={"allow_external_processing": "true"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert called == [("role.pdf", b"local test content")]
 
 
 def test_skill_categories_expose_the_ladder(client: TestClient) -> None:

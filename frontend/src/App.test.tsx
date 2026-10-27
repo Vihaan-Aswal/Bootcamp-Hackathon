@@ -16,6 +16,8 @@ const bodies: Record<string, unknown> = {
       supports_json_schema: false,
       external: false,
       resume_processing_allowed: true,
+      jd_processing_allowed: false,
+      route: ["mock/local-registry-rules"],
     },
     company_data: {
       available: true,
@@ -214,7 +216,7 @@ describe("foundation screen", () => {
         evidence: `${scenario.jdSkill} is required for this role.`,
         evidence_status: "exact",
         confidence: "high",
-        requirement_type: "required",
+        requirement_type: "mentioned",
         origin: "jd",
         source_ref: sourceRef("role.docx"),
       };
@@ -346,13 +348,20 @@ describe("foundation screen", () => {
       });
       fireEvent.click(screen.getByRole("button", { name: "Analyze job description" }));
       expect(await screen.findByText(`${scenario.jdSkill} is required for this role.`)).toBeTruthy();
+      fireEvent.change(screen.getByLabelText(`Requirement classification for ${scenario.jdSkill}`), {
+        target: { value: "required" },
+      });
 
       const resumeFile = new File(["I have used a documented skill."], "resume.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-      fireEvent.change(screen.getByLabelText("Choose resume (PDF or DOCX)"), {
+      fireEvent.click(screen.getByRole("tab", { name: "Resume" }));
+      fireEvent.change(screen.getByLabelText(/Resume \(PDF or DOCX\)/), {
         target: { files: [resumeFile] },
       });
-      fireEvent.click(screen.getByRole("button", { name: "Parse and merge suggestions" }));
-      expect(await screen.findByText("Resume suggestions merged. Review every item before saving.")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Parse resume" }));
+      expect(await screen.findByText(`I have used ${scenario.resumeSkill}.`)).toBeTruthy();
+      fireEvent.click(screen.getByLabelText(`Accept ${scenario.resumeSkill}`));
+      fireEvent.click(screen.getByRole("button", { name: "Merge accepted suggestions into Profile Builder" }));
+      expect(await screen.findByText("Accepted resume suggestions merged. Review the profile and save your changes.")).toBeTruthy();
 
       fireEvent.change(screen.getByLabelText("Full name"), { target: { value: scenario.candidate } });
       fireEvent.change(screen.getByLabelText("Email"), { target: { value: scenario.email } });
@@ -396,6 +405,7 @@ describe("foundation screen", () => {
       };
       expect(request.profile.skills.some((skill) => skill.skill_id === scenario.resumeSkillId)).toBe(true);
       expect(request.jd.filename).toBe("role.docx");
+      expect((request as unknown as { jd: { skills: { requirement_type: string }[] } }).jd.skills[0].requirement_type).toBe("required");
     },
   );
 });

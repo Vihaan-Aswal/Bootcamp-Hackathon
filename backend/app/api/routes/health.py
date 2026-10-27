@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.schemas import CompanyDataStatus, HealthResponse, ModuleStatus, ProviderStatus
+from app.config import settings
 from app.contracts.v1 import CONTRACT_VERSION
 from app.providers.factory import provider_availability
 from app.services.company_data import CompanyDataError, load_company_data
@@ -52,6 +53,8 @@ def read_health() -> HealthResponse:
             supports_json_schema=provider.supports_json_schema,
             external=provider.external,
             resume_processing_allowed=provider.resume_processing_allowed,
+            jd_processing_allowed=settings.llm_jd_processing_allowed,
+            route=list(provider.route),
         ),
         company_data=company_data,
         modules=list(MODULES),

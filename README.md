@@ -11,8 +11,9 @@ database schema or secret was copied from it.
 
 Milestones **M1 — foundation and shared contract**, **M2 — document intelligence**,
 **M3 — Profile Builder and persistence**, and **M4 — Talent Check and Skill Matching** have
-local implementations. M5 integration checks and walkthrough preparation are in place; official
-role scoring with a configured provider and a human demo rehearsal remain pending. See
+local implementations. M5 integration checks and walkthrough preparation are in place. The team
+has confirmed the guide, role ownership, shared contract and demo rehearsal. Official acceptance
+still needs two human-reviewed JD/role flows using official JD samples. See
 [`docs/m5_walkthrough.md`](docs/m5_walkthrough.md) for evidence and exact next steps.
 
 - independent FastAPI backend and React/Vite/TypeScript frontend, both runnable;
@@ -26,7 +27,10 @@ role scoring with a configured provider and a human demo rehearsal remain pendin
 - JD Analytics and Resume Parsing endpoints returning the shared contract with source evidence;
 - a no-network local mock provider, plus single-provider OpenRouter, Groq, Gemini and
   OpenAI-compatible HTTP adapters; all model output is validated locally with Pydantic;
-- a candidate screen for document uploads, evidence review and explicit resume-processing consent.
+- a candidate screen for document uploads, evidence review and per-upload consent before external
+  JD or resume processing.
+- a local JD evidence-review control so a person can classify each extracted skill as required,
+  preferred, mentioned or unclear before scoring;
 - an editable profile form for resume suggestions, education, projects, experience, activities,
   preferred roles and all 12 optional self-reported ratings;
 - JSON import/export, a local browser-storage adapter, and a browser Supabase repository protected
@@ -39,9 +43,10 @@ role scoring with a configured provider and a human demo rehearsal remain pendin
   fixtures that exercise two roles and two distinct candidate results with the local mock provider.
 
 `GET /api/v1/health` reports the implemented modules as `ready`. Official-sample parsing currently
-meets the local mock thresholds (6/6 JDs and 4/4 resumes); the mock deliberately does not promote
-incidental skill mentions to required skills, so official role scores still need a configured
-provider run. The synthetic fixtures are a demo fallback, not official acceptance data.
+meets the local mock thresholds (6/6 JDs and 4/4 resumes). The mock conservatively leaves
+ambiguous JD requirements unconfirmed; use the visible evidence review to classify them locally.
+Two official JD/role flows still need to be scored and recorded. Synthetic fixtures are a demo
+fallback, not official acceptance data.
 The local `prd.md` and `implementation_plan.md` hold planning details and are intentionally
 excluded from Git.
 
@@ -130,14 +135,31 @@ parser element ids; the backend attaches locations and builds the domain objects
 - `LLM_PROVIDER=mock` is the no-credential default. It performs deterministic local registry-term
   extraction and makes no network calls; it is useful for offline demos, not a substitute for a
   live model's broader extraction ability.
-- External resume processing is blocked by default. After checking the selected provider's current
-  retention and training terms, an administrator may set `LLM_RESUME_PROCESSING_ALLOWED=true`;
-  each resume upload still requires a separate user consent checkbox. Names, email addresses and
-  phone patterns are redacted locally before the request. Evidence is checked against the original
-  parser elements, which remain in memory only for that request.
-- Provider adapters make one vendor selection per request, use no tools or database access, and do
-  not log document content. Structural output gets at most one bounded retry. Provider credentials,
-  timeouts and missing models produce safe errors without response-body details.
+- `LLM_PROVIDER=fallback` optionally tries the comma-separated OpenRouter models in
+  `LLM_OPENROUTER_FALLBACK_MODELS`, then `LLM_GROQ_FALLBACK_MODEL`, then the configured loopback
+  model in `LLM_LOCAL_FALLBACK_MODEL`. Each model gets one attempt; the next is used only after a
+  provider error, invalid structured output, or a fallback response whose claims all fail local
+  evidence verification. Partial evidence failures remain visible in the review result. This does
+  not detect every semantically poor extraction.
+- The fallback route is shown in the upload screen. Review the terms for every external endpoint
+  before enabling either external-processing flag. OpenRouter requests disable upstream provider
+  fallback and require a no-training, zero-data-retention endpoint. Models with documented JSON
+  Schema support use strict mode; other configured models use JSON-object mode and are validated
+  locally. Incompatible free endpoints are skipped. The route can therefore fall through to Groq
+  or local when no eligible OpenRouter endpoint is available. Groq's hosted GPT-OSS model may incur
+  charges beyond account-specific free limits; set provider spending limits. A local fallback
+  requires an already-running OpenAI-compatible server such as Ollama; Docker is not required.
+- External JD and resume processing are blocked by default. After checking the current retention
+  and training terms for every provider in the configured route, an administrator may separately set
+  `LLM_JD_PROCESSING_ALLOWED=true` and/or `LLM_RESUME_PROCESSING_ALLOWED=true`; each upload still
+  requires a separate user consent checkbox. Names, email addresses and phone patterns are
+  redacted locally before resume requests. Evidence is checked against the original parser
+  elements, which remain in memory only for that request.
+- Provider adapters use no tools or database access and do not log document content. A fallback
+  route logs only provider/model identifiers and safe error codes. Direct provider mode allows at
+  most one bounded structural retry; waterfall mode tries each configured route entry once.
+  Provider credentials, timeouts and missing models produce safe errors without response-body
+  details.
 - Groq constrained JSON Schema mode is used only for model IDs currently documented for strict
   output; other Groq models use JSON-object mode and the same local Pydantic validation.
 - `frontend/.env.example` holds only the separate Supabase project's browser-safe URL and
@@ -158,17 +180,18 @@ Put its project URL and publishable key in `frontend/.env.local` as
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, then restart Vite. Never add a service-role
 key to the frontend. The project has not been linked to a live Supabase account in this workspace.
 
-The local Supabase CLI config enables anonymous sign-ins. With Docker Desktop running, validate the
-migration and ownership checks from the repository root:
+Hosted Supabase setup and verification do not require Docker. After configuring the project above,
+verify persistence and ownership in two independent browser sessions. The repository also has an
+optional local database test; that separate test requires Docker Desktop and the Supabase CLI:
 
 ```powershell
-npx supabase start
-npx supabase test db
-npx supabase stop
+supabase start
+supabase test db
+supabase stop
 ```
 
-The SQL test covers two anonymous owners and an unauthenticated `anon` role. The test has not yet
-run in this workspace because the Docker engine was unavailable.
+The SQL test covers two anonymous owners and an unauthenticated `anon` role. This optional local
+test has not run in this workspace.
 
 ## Local planning files
 

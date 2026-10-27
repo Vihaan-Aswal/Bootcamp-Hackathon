@@ -1,4 +1,4 @@
-"""Resolve exactly one configured backend provider, with no vendor failover."""
+"""Resolve one provider or the explicitly configured ordered fallback route."""
 
 from __future__ import annotations
 
@@ -7,11 +7,20 @@ from urllib.parse import urlsplit
 
 from app.config import settings
 from app.providers.adapters import GeminiProvider, OpenAICompatibleProvider
-from app.providers.base import Provider, ProviderError
+from app.providers.base import Provider, ProviderError, ProviderFallbackChain
 from app.providers.mock import MockProvider
 
 _OPENROUTER_URL = "https://openrouter.ai/api/v1"
 _GROQ_URL = "https://api.groq.com/openai/v1"
+# OpenRouter's current model/endpoint documentation advertises JSON Schema for
+# these models. Other candidates use JSON-object mode and local validation.
+_OPENROUTER_STRICT_JSON_SCHEMA_MODELS = frozenset(
+    {
+        "dots-studio/dots-3-note-preview:free",
+        "xingchen-agi/xing4.0-29b-a4b:free",
+        "apodex/apodex-1.1-mini:free",
+    }
+)
 # Groq currently documents strict constrained output for these model IDs.
 # Other Groq models use JSON-object mode and are validated by our local schema.
 _GROQ_STRICT_JSON_SCHEMA_MODELS = frozenset(
@@ -23,6 +32,10 @@ def _groq_supports_strict_json_schema(model: str) -> bool:
     return model.strip().casefold() in _GROQ_STRICT_JSON_SCHEMA_MODELS
 
 
+def _openrouter_supports_strict_json_schema(model: str) -> bool:
+    return model.strip().casefold() in _OPENROUTER_STRICT_JSON_SCHEMA_MODELS
+
+
 @dataclass(frozen=True, slots=True)
 class ProviderAvailability:
     name: str
@@ -30,6 +43,7 @@ class ProviderAvailability:
     supports_json_schema: bool
     external: bool
     resume_processing_allowed: bool
+    route: tuple[str, ...] = ()
 
 
 def _configured_credentials() -> tuple[str, str, str, str]:
@@ -45,15 +59,94 @@ def _configured_credentials() -> tuple[str, str, str, str]:
     return name, model, key, base_url
 
 
+def _fallback_providers() -> tuple[Provider, ...]:
+    """Build the configured waterfall: OpenRouter models, Groq, then loopback model."""
+
+    providers: list[Provider] = []
+    common = {
+        "temperature": settings.llm_temperature,
+        "timeout_seconds": settings.llm_timeout_seconds,
+    }
+    if settings.openrouter_api_key.strip():
+        model_ids = [
+            model.strip()
+            for model in settings.llm_openrouter_fallback_models.split(",")
+            if model.strip()
+        ]
+        providers.extend(
+            OpenAICompatibleProvider(
+                name="openrouter",
+                api_key=settings.openrouter_api_key,
+                base_url=_OPENROUTER_URL,
+                model=model,
+                strict_schema=_openrouter_supports_strict_json_schema(model),
+                disable_routing_fallbacks=True,
+                **common,
+            )
+            for model in model_ids
+        )
+    if settings.groq_api_key.strip() and settings.llm_groq_fallback_model.strip():
+        model = settings.llm_groq_fallback_model.strip()
+        providers.append(
+            OpenAICompatibleProvider(
+                name="groq",
+                api_key=settings.groq_api_key,
+                base_url=_GROQ_URL,
+                model=model,
+                strict_schema=_groq_supports_strict_json_schema(model),
+                **common,
+            )
+        )
+
+    local_model = settings.llm_local_fallback_model.strip()
+    local_url = settings.llm_local_fallback_base_url.strip()
+    local_parts = urlsplit(local_url)
+    is_loopback = (
+        local_parts.scheme == "http"
+        and local_parts.hostname in {"localhost", "127.0.0.1", "::1"}
+        and bool(local_parts.netloc)
+    )
+    if local_model and is_loopback:
+        providers.append(
+            OpenAICompatibleProvider(
+                name="local",
+                api_key="",
+                base_url=local_url,
+                model=local_model,
+                strict_schema=False,
+                **common,
+            )
+        )
+    return tuple(providers)
+
+
 def provider_availability() -> ProviderAvailability:
     """Expose provider readiness without exposing keys or making a network call."""
 
     name, model, key, base_url = _configured_credentials()
     if name == "mock":
-        return ProviderAvailability("mock", True, False, False, True)
+        return ProviderAvailability(
+            "mock", True, False, False, True, ("mock/local-registry-rules",)
+        )
+    if name == "fallback":
+        chain = _fallback_providers()
+        route = ProviderFallbackChain(chain).route
+        return ProviderAvailability(
+            "fallback",
+            bool(chain),
+            all(provider.supports_json_schema for provider in chain),
+            any(provider.external for provider in chain),
+            settings.llm_resume_processing_allowed,
+            route,
+        )
     if name == "openrouter":
         return ProviderAvailability(
-            name, bool(key and model), True, True, settings.llm_resume_processing_allowed
+            name,
+            bool(key and model),
+            True,
+            True,
+            settings.llm_resume_processing_allowed,
+            (f"openrouter/{model}",) if model else (),
         )
     if name == "groq":
         return ProviderAvailability(
@@ -62,10 +155,16 @@ def provider_availability() -> ProviderAvailability:
             _groq_supports_strict_json_schema(model),
             True,
             settings.llm_resume_processing_allowed,
+            (f"groq/{model}",) if model else (),
         )
     if name == "gemini":
         return ProviderAvailability(
-            name, bool(key and model), True, True, settings.llm_resume_processing_allowed
+            name,
+            bool(key and model),
+            True,
+            True,
+            settings.llm_resume_processing_allowed,
+            (f"gemini/{model}",) if model else (),
         )
     if name == "openai_compatible":
         parts = urlsplit(base_url)
@@ -77,12 +176,13 @@ def provider_availability() -> ProviderAvailability:
             False,
             not local_http,
             settings.llm_resume_processing_allowed,
+            (f"{name}/{model}",) if model else (),
         )
     return ProviderAvailability(name or "unknown", False, False, True, False)
 
 
-def get_provider() -> Provider:
-    """Resolve one explicitly configured backend provider for this request."""
+def get_provider() -> Provider | ProviderFallbackChain:
+    """Resolve the configured document provider route for this request."""
 
     availability = provider_availability()
     name, model, key, base_url = _configured_credentials()
@@ -92,6 +192,8 @@ def get_provider() -> Provider:
             "The selected provider is missing a model, API key, or valid base URL.",
             status_code=503,
         )
+    if name == "fallback":
+        return ProviderFallbackChain(_fallback_providers())
     common = {
         "model": model,
         "temperature": settings.llm_temperature,

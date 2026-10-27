@@ -31,6 +31,7 @@ type Props = {
     file: File,
     allowExternalProcessing: boolean,
   ) => Promise<ExtractionResult>;
+  reviewedResumeSuggestions?: ExtractionResult | null;
   categories: SkillCategoryListResponse;
   provider: HealthResponse["provider"];
   storageMode: "local" | "supabase" | "unavailable";
@@ -112,6 +113,7 @@ export function mergeResumeSuggestions(
 
   return {
     ...profile,
+    cv_filename: profile.cv_filename || extraction.filename,
     skills: mergeUnique(skills, incomingSkills, (left: Skill, right: Skill) => {
       if (left.skill_id && right.skill_id && left.skill_id === right.skill_id) return true;
       return sameText(left.skill_name, right.skill_name);
@@ -223,6 +225,7 @@ export default function ProfileBuilder({
   onDelete,
   onImport,
   onParseResume,
+  reviewedResumeSuggestions = null,
   categories,
   provider,
   storageMode,
@@ -238,6 +241,7 @@ export default function ProfileBuilder({
   const [externalConsent, setExternalConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const appliedReview = useRef<ExtractionResult | null>(null);
 
   useEffect(() => {
     const profile = selectedProfileId
@@ -250,6 +254,19 @@ export default function ProfileBuilder({
     if (resumeInput.current) resumeInput.current.value = "";
     setExternalConsent(false);
   }, [selectedProfileId]);
+
+  useEffect(() => {
+    if (
+      !reviewedResumeSuggestions ||
+      reviewedResumeSuggestions.source_type !== "resume" ||
+      appliedReview.current === reviewedResumeSuggestions
+    ) return;
+
+    appliedReview.current = reviewedResumeSuggestions;
+    setDraft((current) => mergeResumeSuggestions(current, reviewedResumeSuggestions));
+    setError(null);
+    setMessage("Accepted resume suggestions merged. Review the profile and save your changes.");
+  }, [reviewedResumeSuggestions]);
 
   const rateableCategories = categories.categories.filter((category) => category.code !== "OTHER");
   const updateDraft = (change: (profile: EditableProfile) => EditableProfile) => {
@@ -544,8 +561,14 @@ export default function ProfileBuilder({
           </label>
 
           {provider.external && !provider.resume_processing_allowed ? (
-            <p className="notice" role="note">External resume processing is blocked. An administrator must review the selected provider’s current terms before enabling it.</p>
+            <p className="notice" role="note">External resume processing is blocked. An administrator must review the current terms for every provider in this route before enabling it.</p>
           ) : provider.external ? (
+            <>
+              {provider.route.length > 1 && (
+                <p className="muted provider-route" aria-label="Provider fallback order">
+                  Fallback order: {provider.route.join(" → ")}
+                </p>
+              )}
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -553,8 +576,10 @@ export default function ProfileBuilder({
                 onChange={(event) => setExternalConsent(event.target.checked)}
                 disabled={parseBusy || busy}
               />
-              I reviewed the provider’s current terms and consent to send this redacted resume for parsing.
+              I reviewed this route’s current terms and consent that the redacted resume may be sent
+              to each listed provider in order until one returns a valid result.
             </label>
+            </>
           ) : null}
 
           {!provider.configured && (

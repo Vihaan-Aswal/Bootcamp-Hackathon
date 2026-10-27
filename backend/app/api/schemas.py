@@ -66,6 +66,8 @@ class ProviderStatus(ContractModel):
     supports_json_schema: bool
     external: bool
     resume_processing_allowed: bool
+    jd_processing_allowed: bool
+    route: list[str] = Field(default_factory=list)
 
 
 class HealthResponse(ContractModel):

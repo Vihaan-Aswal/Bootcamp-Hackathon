@@ -9,9 +9,13 @@ import pytest
 
 from app.contracts.v1 import ElementKind, SourceElement, SourceType
 from app.providers.adapters import GeminiProvider, OpenAICompatibleProvider
-from app.providers.base import ProviderError
-from app.providers.factory import _groq_supports_strict_json_schema
-from app.services.extraction_pipeline import create_extraction_request
+from app.providers.base import ProviderError, ProviderFallbackChain
+from app.providers.factory import (
+    _groq_supports_strict_json_schema,
+    _openrouter_supports_strict_json_schema,
+    get_provider,
+)
+from app.services.extraction_pipeline import create_extraction_request, run_extraction_provider
 
 
 def _request():
@@ -42,6 +46,22 @@ def test_groq_uses_strict_mode_only_for_supported_models(model: str, supports_sc
     assert _groq_supports_strict_json_schema(model) is supports_schema
 
 
+@pytest.mark.parametrize(
+    ("model", "supports_schema"),
+    [
+        ("dots-studio/dots-3-note-preview:free", True),
+        ("xingchen-agi/xing4.0-29b-a4b:free", True),
+        ("apodex/apodex-1.1-mini:free", True),
+        ("google/gemma-4-31b-it:free", False),
+        ("recursive/flint-v1.0:free", False),
+    ],
+)
+def test_openrouter_uses_schema_mode_only_for_models_that_advertise_it(
+    model: str, supports_schema: bool
+) -> None:
+    assert _openrouter_supports_strict_json_schema(model) is supports_schema
+
+
 def test_openrouter_uses_strict_schema_without_upstream_fallback() -> None:
     captured: dict[str, object] = {}
 
@@ -64,7 +84,12 @@ def test_openrouter_uses_strict_schema_without_upstream_fallback() -> None:
     assert provider.generate_structured(_request()) == '{"skills":[]}'
     body = captured["body"]
     assert isinstance(body, dict)
-    assert body["provider"] == {"require_parameters": True, "allow_fallbacks": False}
+    assert body["provider"] == {
+        "require_parameters": True,
+        "allow_fallbacks": False,
+        "data_collection": "deny",
+        "zdr": True,
+    }
     assert body["response_format"]["json_schema"]["strict"] is True
     assert "tools" not in body
     assert captured["url"] == "https://openrouter.ai/api/v1/chat/completions"
@@ -138,3 +163,93 @@ def test_openai_compatible_local_http_allows_no_key_but_requires_safe_url() -> N
             api_key="",
             base_url="http://example.test/v1",
         )
+
+
+def test_fallback_chain_tries_next_model_after_provider_failure(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    class FailingProvider:
+        name = "openrouter"
+        model = "first-free-model"
+        supports_json_schema = True
+        external = True
+
+        def generate_structured(self, _request):
+            raise ProviderError("PROVIDER_RATE_LIMITED", "rate limited", 503)
+
+    class WorkingProvider:
+        name = "groq"
+        model = "openai/gpt-oss-120b"
+        supports_json_schema = True
+        external = True
+
+        def generate_structured(self, _request):
+            return '{"skills":[]}'
+
+    chosen, output = run_extraction_provider(
+        ProviderFallbackChain((FailingProvider(), WorkingProvider())), _request()
+    )
+
+    assert chosen.name == "groq"
+    assert output.skills == []
+    assert "PROVIDER_RATE_LIMITED" in caplog.text
+    assert "private resume content" not in caplog.text
+
+
+def test_fallback_chain_uses_next_model_when_schema_output_is_invalid() -> None:
+    class MalformedProvider:
+        name = "openrouter"
+        model = "malformed-model"
+        supports_json_schema = True
+        external = True
+
+        def generate_structured(self, _request):
+            return '{"unexpected":"shape"}'
+
+    class WorkingProvider:
+        name = "groq"
+        model = "openai/gpt-oss-120b"
+        supports_json_schema = True
+        external = True
+
+        def generate_structured(self, _request):
+            return '{"skills":[]}'
+
+    chosen, output = run_extraction_provider(
+        ProviderFallbackChain((MalformedProvider(), WorkingProvider())), _request()
+    )
+
+    assert chosen.model == "openai/gpt-oss-120b"
+    assert output.skills == []
+
+
+def test_fallback_factory_orders_models_before_groq_then_loopback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.config import settings
+    from app.providers.base import ProviderFallbackChain
+
+    monkeypatch.setattr(settings, "llm_provider", "fallback")
+    monkeypatch.setattr(settings, "openrouter_api_key", "openrouter-test-key")
+    monkeypatch.setattr(settings, "groq_api_key", "groq-test-key")
+    monkeypatch.setattr(
+        settings,
+        "llm_openrouter_fallback_models",
+        "dots-studio/dots-3-note-preview:free,google/gemma-4-31b-it:free",
+    )
+    monkeypatch.setattr(settings, "llm_groq_fallback_model", "openai/gpt-oss-120b")
+    monkeypatch.setattr(settings, "llm_local_fallback_model", "local-test-model")
+    monkeypatch.setattr(settings, "llm_local_fallback_base_url", "http://localhost:11434/v1")
+
+    chain = get_provider()
+
+    assert isinstance(chain, ProviderFallbackChain)
+    assert chain.route == (
+        "openrouter/dots-studio/dots-3-note-preview:free",
+        "openrouter/google/gemma-4-31b-it:free",
+        "groq/openai/gpt-oss-120b",
+        "local/local-test-model",
+    )
+    assert chain.providers[0].supports_json_schema is True
+    assert chain.providers[1].supports_json_schema is False
+    assert chain.external is True

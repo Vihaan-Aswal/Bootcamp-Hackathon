@@ -25,7 +25,17 @@ function sourceLocation(result: ExtractionResult, page?: number | null, paragrap
   return `${result.filename} · ${place}`;
 }
 
-export function ExtractionReview({ result }: { result: ExtractionResult }) {
+type RequirementType = "required" | "preferred" | "mentioned" | "unclear";
+
+export function ExtractionReview({
+  result,
+  onJdUpdated,
+  onResumeAccepted,
+}: {
+  result: ExtractionResult;
+  onJdUpdated?: (result: ExtractionResult) => void;
+  onResumeAccepted?: (result: ExtractionResult) => void;
+}) {
   const skills = result.skills ?? [];
   const education = result.education ?? [];
   const projects = result.projects ?? [];
@@ -60,14 +70,40 @@ export function ExtractionReview({ result }: { result: ExtractionResult }) {
       ))}
 
       {result.source_type === "jd" && skills.length > 0 ? (
+        <>
+        <p className="muted requirement-review-note">
+          Review each label against its quoted evidence. Only skills you confirm as required count
+          toward Skill Match scoring.
+        </p>
         <ul className="evidence-list">
           {skills.map((skill, index) => (
             <li key={`${skill.skill_id ?? skill.skill_name}-${index}`}>
               <div className="skill-title">
                 <strong>{skill.skill_name}</strong>
-                <span className="badge">{skill.requirement_type ?? "Resume skill"}</span>
                 <span className="muted">{skill.category_code}</span>
               </div>
+              <label className="requirement-review-control">
+                Requirement classification
+                <select
+                  aria-label={`Requirement classification for ${skill.skill_name}`}
+                  value={skill.requirement_type ?? "unclear"}
+                  onChange={(event) => {
+                    const requirementType = event.target.value as RequirementType;
+                    onJdUpdated?.({
+                      ...result,
+                      skills: skills.map((item, itemIndex) => itemIndex === index
+                        ? { ...item, requirement_type: requirementType }
+                        : item,
+                      ),
+                    });
+                  }}
+                >
+                  <option value="required">Required</option>
+                  <option value="preferred">Preferred</option>
+                  <option value="mentioned">Mentioned</option>
+                  <option value="unclear">Unclear</option>
+                </select>
+              </label>
               <blockquote>{skill.evidence}</blockquote>
               <p className="muted">
                 {skill.source_ref
@@ -77,6 +113,7 @@ export function ExtractionReview({ result }: { result: ExtractionResult }) {
             </li>
           ))}
         </ul>
+        </>
       ) : result.source_type === "jd" ? (
         <p className="muted">No skill claims had verifiable supporting text.</p>
       ) : null}
@@ -89,6 +126,7 @@ export function ExtractionReview({ result }: { result: ExtractionResult }) {
           education={education}
           projects={projects}
           experience={experience}
+          onAccept={onResumeAccepted}
         />
       )}
 
@@ -115,12 +153,14 @@ function ResumeSuggestionReview({
   education: initialEducation,
   projects: initialProjects,
   experience: initialExperience,
+  onAccept,
 }: {
   result: ExtractionResult;
   skills: SkillSuggestion[];
   education: EducationSuggestion[];
   projects: ProjectSuggestion[];
   experience: ExperienceSuggestion[];
+  onAccept?: (result: ExtractionResult) => void;
 }) {
   const [skills, setSkills] = useState(() => reviewItems(initialSkills, "skill"));
   const [education, setEducation] = useState(() => reviewItems(initialEducation, "education"));
@@ -135,6 +175,21 @@ function ResumeSuggestionReview({
         Edit suggestions, accept the facts to keep, or remove anything that does not belong.
         {` ${acceptedCount} accepted. Evidence quotes and locations stay tied to the original document after edits.`}
       </p>
+      {onAccept && (
+        <button
+          type="button"
+          disabled={acceptedCount === 0}
+          onClick={() => onAccept({
+            ...result,
+            skills: skills.filter((item) => item.accepted).map((item) => item.value),
+            education: education.filter((item) => item.accepted).map((item) => item.value),
+            projects: projects.filter((item) => item.accepted).map((item) => item.value),
+            experience: experience.filter((item) => item.accepted).map((item) => item.value),
+          })}
+        >
+          Merge accepted suggestions into Profile Builder
+        </button>
+      )}
       <SuggestionSection title="Skill suggestions" emptyText="No supported skills were found." hasItems={skills.length > 0}>
         {skills.map(({ id, accepted, value }) => (
           <li key={id}>
@@ -360,9 +415,11 @@ function SuggestionSection({
 export default function DocumentIntelligence({
   provider,
   onJdAnalyzed,
+  onResumeAccepted,
 }: {
   provider: HealthResponse["provider"];
   onJdAnalyzed?: (result: ExtractionResult | null) => void;
+  onResumeAccepted?: (result: ExtractionResult) => void;
 }) {
   const [mode, setMode] = useState<AnalysisMode>("jd");
   const [file, setFile] = useState<File | null>(null);
@@ -372,11 +429,15 @@ export default function DocumentIntelligence({
   const [busy, setBusy] = useState(false);
 
   const isExternalResume = mode === "resume" && provider.external;
-  const termsReviewed = provider.configured && provider.resume_processing_allowed;
-  const blocked = isExternalResume && !termsReviewed;
-  const consentRequired = isExternalResume && termsReviewed;
+  const isExternalJd = mode === "jd" && provider.external;
+  const resumeTermsReviewed = provider.configured && provider.resume_processing_allowed;
+  const jdTermsReviewed = provider.configured && provider.jd_processing_allowed;
+  const processingBlocked =
+    (isExternalResume && !resumeTermsReviewed) || (isExternalJd && !jdTermsReviewed);
+  const consentRequired =
+    (isExternalResume && resumeTermsReviewed) || (isExternalJd && jdTermsReviewed);
   const canSubmit = Boolean(
-    file && provider.configured && !busy && (!blocked && (!consentRequired || consent)),
+    file && provider.configured && !busy && !processingBlocked && (!consentRequired || consent),
   );
 
   function chooseMode(nextMode: AnalysisMode) {
@@ -396,7 +457,7 @@ export default function DocumentIntelligence({
     if (mode === "jd") onJdAnalyzed?.(null);
     try {
       const extracted = mode === "jd"
-        ? await api.analyzeJd(file)
+        ? await api.analyzeJd(file, consent)
         : await api.parseResume(file, consent);
       setResult(extracted);
       if (extracted.source_type === "jd") onJdAnalyzed?.(extracted);
@@ -418,6 +479,11 @@ export default function DocumentIntelligence({
           {provider.configured ? `Provider: ${provider.name}` : "Provider not configured"}
         </span>
       </div>
+      {provider.configured && provider.route.length > 1 && (
+        <p className="muted provider-route" aria-label="Provider fallback order">
+          Fallback order: {provider.route.join(" → ")}
+        </p>
+      )}
 
       <div className="mode-tabs" role="tablist" aria-label="Document type">
         <button
@@ -454,12 +520,12 @@ export default function DocumentIntelligence({
           />
         </label>
 
-        {mode === "resume" && provider.external && (
+        {isExternalResume && (
           <div className="privacy-block">
-            {blocked ? (
+            {!resumeTermsReviewed ? (
               <p className="notice" role="note">
-                External resume processing is blocked. An administrator must review the selected
-                provider’s current terms before enabling it.
+                External resume processing is blocked. An administrator must review the current
+                terms for every provider in this route before enabling it.
               </p>
             ) : (
               <label className="checkbox-row">
@@ -467,10 +533,31 @@ export default function DocumentIntelligence({
                   type="checkbox"
                   checked={consent}
                   onChange={(event) => setConsent(event.target.checked)}
-                  disabled={!termsReviewed}
+                  disabled={!resumeTermsReviewed}
                 />
-                I reviewed the provider’s current terms and consent to send this redacted resume
-                for parsing.
+                I reviewed this route’s current terms and consent that the redacted resume may be
+                sent to each listed provider in order until one returns a valid result.
+              </label>
+            )}
+          </div>
+        )}
+
+        {isExternalJd && (
+          <div className="privacy-block">
+            {!jdTermsReviewed ? (
+              <p className="notice" role="note">
+                External job-description processing is blocked until an administrator reviews the
+                current terms for every provider in this route.
+              </p>
+            ) : (
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(event) => setConsent(event.target.checked)}
+                />
+                I reviewed this route’s current terms and consent that the job description may be
+                sent to each listed provider in order until one returns a valid result.
               </label>
             )}
           </div>
@@ -483,7 +570,7 @@ export default function DocumentIntelligence({
           </p>
         )}
         <p className="muted privacy-note">
-          Uploads are processed for this request only. The app does not save raw resume files.
+          Uploads are processed for this request only. The app does not save raw document files.
         </p>
         <button type="submit" disabled={!canSubmit}>
           {busy ? "Analyzing…" : mode === "jd" ? "Analyze job description" : "Parse resume"}
@@ -491,7 +578,16 @@ export default function DocumentIntelligence({
       </form>
 
       {error && <p className="error" role="alert">{error}</p>}
-      {result && <ExtractionReview result={result} />}
+      {result && (
+        <ExtractionReview
+          result={result}
+          onJdUpdated={(updated) => {
+            setResult(updated);
+            onJdAnalyzed?.(updated);
+          }}
+          onResumeAccepted={onResumeAccepted}
+        />
+      )}
     </section>
   );
 }

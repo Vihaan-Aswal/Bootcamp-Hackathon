@@ -85,6 +85,7 @@ class OpenAICompatibleProvider:
         self.model = model
         self._api_key = api_key
         self._base_url = _validated_base_url(base_url)
+        self.external = not _is_loopback_http(self._base_url)
         self._temperature = temperature
         self._timeout_seconds = timeout_seconds
         self._strict_schema = strict_schema
@@ -115,9 +116,15 @@ class OpenAICompatibleProvider:
             ),
         }
         if self._disable_routing_fallbacks:
-            # OpenRouter can route a model to several upstream vendors. Require
-            # the selected endpoint parameters and forbid upstream failover.
-            body["provider"] = {"require_parameters": True, "allow_fallbacks": False}
+            # Keep each OpenRouter attempt on one endpoint and require a
+            # no-training, zero-retention route. If no eligible endpoint exists,
+            # the application-level waterfall tries its next configured model.
+            body["provider"] = {
+                "require_parameters": True,
+                "allow_fallbacks": False,
+                "data_collection": "deny",
+                "zdr": True,
+            }
         return self._post_chat_completion(body)
 
     def _post_chat_completion(self, body: dict[str, Any]) -> str:
@@ -185,6 +192,7 @@ class GeminiProvider:
 
     name = "gemini"
     supports_json_schema = True
+    external = True
     base_url = "https://generativelanguage.googleapis.com/v1beta/models"
 
     def __init__(
@@ -293,6 +301,11 @@ def _validated_base_url(value: str) -> str:
     if not parts.netloc or parts.username or parts.password or parts.query or parts.fragment:
         raise ProviderError("INVALID_PROVIDER_URL", "The provider base URL is invalid.", 503)
     return value.rstrip("/")
+
+
+def _is_loopback_http(value: str) -> bool:
+    parts = urlsplit(value.strip())
+    return parts.scheme == "http" and parts.hostname in {"localhost", "127.0.0.1", "::1"}
 
 
 def _response_json(response: httpx.Response) -> dict[str, Any]:

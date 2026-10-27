@@ -21,10 +21,32 @@ from app.contracts.v1 import (
 )
 from app.parsing.document import ParsedDocument
 from app.parsing.evidence import verify_evidence_quote
-from app.providers.base import Provider
+from app.providers.base import Provider, ProviderError
 from app.services.skill_registry import resolve_skill
 
 RequirementResolver = Callable[[LlmSkillClaim, SourceElement], RequirementType]
+
+
+def require_verified_claim_when_claims_exist(
+    output: LlmExtractionOutput,
+    result: ExtractionResult,
+) -> None:
+    """Reject a fallback candidate whose every claim fails source verification."""
+
+    claim_count = sum(
+        len(items)
+        for items in (output.skills, output.education, output.projects, output.experience)
+    )
+    verified_count = sum(
+        len(items)
+        for items in (result.skills, result.education, result.projects, result.experience)
+    )
+    if claim_count and not verified_count:
+        raise ProviderError(
+            "UNVERIFIED_PROVIDER_OUTPUT",
+            "The provider's claims could not be verified against the source document.",
+            status_code=502,
+        )
 
 
 def _source_ref(document: ParsedDocument, element: SourceElement) -> SourceRef:

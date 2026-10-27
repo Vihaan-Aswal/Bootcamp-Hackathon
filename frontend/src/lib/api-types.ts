@@ -182,6 +182,11 @@ export interface components {
         };
         /** Body_analyze_jd_upload_api_v1_jds_analyze_post */
         Body_analyze_jd_upload_api_v1_jds_analyze_post: {
+            /**
+             * Allow External Processing
+             * @default false
+             */
+            allow_external_processing: boolean;
             /** File */
             file: string;
         };
@@ -588,10 +593,14 @@ export interface components {
             configured: boolean;
             /** External */
             external: boolean;
+            /** Jd Processing Allowed */
+            jd_processing_allowed: boolean;
             /** Name */
             name: string;
             /** Resume Processing Allowed */
             resume_processing_allowed: boolean;
+            /** Route */
+            route: string[];
             /** Supports Json Schema */
             supports_json_schema: boolean;
         };

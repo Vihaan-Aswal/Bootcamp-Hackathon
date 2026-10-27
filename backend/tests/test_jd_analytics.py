@@ -15,7 +15,7 @@ from app.config import settings
 from app.contracts.dto import LlmExtractionOutput, LlmSkillClaim
 from app.contracts.v1 import RequirementType, SourceElement
 from app.parsing.document import parse_document
-from app.providers.base import StructuredGenerationRequest
+from app.providers.base import ProviderFallbackChain, StructuredGenerationRequest
 from app.providers.mock import MockProvider
 from app.services.jd_analytics import analyze_jd, classify_requirement
 
@@ -217,6 +217,41 @@ def test_unverified_provider_claim_is_rejected_not_returned_as_a_skill() -> None
     assert result.skills == []
     assert result.rejected_claims[0].claim == "Python"
     assert "not found" in result.rejected_claims[0].reason
+
+
+def test_fallback_continues_when_all_claims_fail_evidence_verification() -> None:
+    content = _make_pdf(["Requirements", "Python is essential for this position."])
+    document = parse_document("role.pdf", content, max_bytes=1_000_000, max_pages=20)
+    evidence_element = next(element for element in document.elements if "Python" in element.text)
+
+    class CandidateProvider:
+        name = "openrouter"
+        supports_json_schema = True
+        external = True
+
+        def __init__(self, model: str, source_element_id: str) -> None:
+            self.model = model
+            self.source_element_id = source_element_id
+
+        def generate_structured(self, _request: StructuredGenerationRequest) -> str:
+            return LlmExtractionOutput(
+                skills=[
+                    LlmSkillClaim(
+                        skill_name="Python",
+                        evidence_quote=evidence_element.text,
+                        source_element_id=self.source_element_id,
+                        requirement_type="required",
+                    )
+                ]
+            ).model_dump_json()
+
+    first = CandidateProvider("first-free", "invalid-element-id")
+    second = CandidateProvider("second-free", evidence_element.element_id)
+
+    result = analyze_jd("role.pdf", content, ProviderFallbackChain((first, second)))
+
+    assert result.metadata.model == "second-free"
+    assert [skill.skill_name for skill in result.skills] == ["Python"]
 
 
 def test_bad_and_oversized_uploads_return_safe_errors() -> None:

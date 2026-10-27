@@ -11,7 +11,7 @@ from app.api.errors import extraction_http_error
 from app.config import settings
 from app.contracts.v1 import ExtractionResult
 from app.parsing.document import DocumentParseError
-from app.providers.base import Provider, ProviderError
+from app.providers.base import ProviderError, ProviderRoute
 from app.services.resume_parsing import parse_resume
 
 router = APIRouter(tags=["resume parsing"])
@@ -32,7 +32,7 @@ router = APIRouter(tags=["resume parsing"])
 )
 def parse_resume_endpoint(
     file: Annotated[UploadFile, File(...)],
-    provider: Annotated[Provider, Depends(require_document_provider)],
+    provider: Annotated[ProviderRoute, Depends(require_document_provider)],
     allow_external_processing: Annotated[bool, Form()] = False,
 ) -> ExtractionResult:
     """Return suggestions; the caller can edit or discard them before saving."""

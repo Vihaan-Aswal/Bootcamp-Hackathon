@@ -23,6 +23,8 @@ const localProvider: HealthResponse["provider"] = {
   supports_json_schema: false,
   external: false,
   resume_processing_allowed: true,
+  jd_processing_allowed: false,
+  route: ["mock/local-registry-rules"],
 };
 
 function profile(
@@ -196,6 +198,37 @@ describe("Profile Builder", () => {
     expect(result.skillset_levels).toEqual(current.skillset_levels);
   });
 
+  it("merges accepted suggestions from the document review into the profile draft", async () => {
+    const reviewed = {
+      ...extraction([
+        {
+          skill_name: "Python",
+          skill_id: "python",
+          category_code: "COD",
+          evidence: "Built with Python.",
+          evidence_status: "exact",
+          confidence: "high",
+          requirement_type: null,
+          origin: "resume",
+          source_ref: {
+            element_id: "p-1",
+            filename: "resume.docx",
+            page: null,
+            paragraph: 0,
+            heading: null,
+          },
+        },
+      ]),
+      document_id: "reviewed-resume-1",
+    } as ExtractionResult;
+
+    renderBuilder({ reviewedResumeSuggestions: reviewed });
+
+    expect(await screen.findByLabelText("Skill 1")).toHaveProperty("value", "Python");
+    expect(await screen.findByText(/Accepted resume suggestions merged/)).toBeTruthy();
+    expect(screen.getByLabelText("Coding self-reported rating")).toHaveProperty("value", "");
+  });
+
   it("calls resume parsing, keeps the filename, and requires consent for external providers", async () => {
     const external: HealthResponse["provider"] = { ...localProvider, name: "openrouter", external: true };
     const { onParseResume } = renderBuilder({ provider: external });
@@ -204,14 +237,14 @@ describe("Profile Builder", () => {
     const parseButton = screen.getByRole("button", { name: "Parse and merge suggestions" });
     expect(parseButton).toHaveProperty("disabled", true);
 
-    fireEvent.click(screen.getByLabelText(/reviewed the provider’s current terms and consent/i));
+    fireEvent.click(screen.getByLabelText(/reviewed this route’s current terms and consent/i));
     fireEvent.click(parseButton);
     expect(await screen.findByText("Resume suggestions merged. Review every item before saving.")).toBeTruthy();
     expect(onParseResume).toHaveBeenCalledWith(file, true);
     expect(screen.getByText("candidate.pdf")).toBeTruthy();
     expect(screen.getByLabelText("AI category self-reported rating")).toHaveProperty("value", "");
     expect(
-      screen.getByLabelText(/reviewed the provider’s current terms and consent/i),
+      screen.getByLabelText(/reviewed this route’s current terms and consent/i),
     ).toHaveProperty("checked", false);
 
     const secondFile = new File(["second resume body"], "second.pdf", { type: "application/pdf" });

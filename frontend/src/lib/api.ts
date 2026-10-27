@@ -70,7 +70,8 @@ export const api = {
     getJson<CompanySkillBar>(`/api/v1/companies/${encodeURIComponent(companyId)}`),
   skillCategories: () =>
     getJson<SkillCategoryListResponse>("/api/v1/reference/skill-categories"),
-  analyzeJd: (file: File) => postFile<ExtractionResult>("/api/v1/jds/analyze", file),
+  analyzeJd: (file: File, allowExternalProcessing = false) =>
+    postFile<ExtractionResult>("/api/v1/jds/analyze", file, allowExternalProcessing),
   parseResume: (file: File, allowExternalProcessing: boolean) =>
     postFile<ExtractionResult>("/api/v1/resumes/parse", file, allowExternalProcessing),
   validateProfile: (profile: unknown) =>

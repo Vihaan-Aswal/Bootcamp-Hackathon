@@ -5,12 +5,15 @@ from __future__ import annotations
 import re
 
 from app.config import settings
-from app.contracts.dto import LlmSkillClaim
+from app.contracts.dto import LlmExtractionOutput, LlmSkillClaim
 from app.contracts.v1 import ExtractionResult, RequirementType, SourceElement, SourceType
 from app.parsing.document import ParsedDocument, parse_document
-from app.providers.base import Provider
+from app.providers.base import Provider, ProviderFallbackChain, ProviderRoute
 from app.services.extraction_pipeline import create_extraction_request, run_extraction_provider
-from app.services.extraction_result import build_extraction_result
+from app.services.extraction_result import (
+    build_extraction_result,
+    require_verified_claim_when_claims_exist,
+)
 
 JD_SYSTEM_PROMPT = """You extract skills and technologies from one job description.
 Return only the requested JSON object with fields skills, education, projects, and experience.
@@ -108,7 +111,7 @@ def _requirement_clauses(evidence: str) -> list[str]:
 def analyze_jd(
     filename: str | None,
     content: bytes,
-    provider: Provider,
+    provider: ProviderRoute,
 ) -> ExtractionResult:
     """Parse one JD, call the selected provider once, and verify every claim."""
 
@@ -123,11 +126,27 @@ def analyze_jd(
         elements=document.elements,
         system_prompt=JD_SYSTEM_PROMPT,
     )
-    output = run_extraction_provider(provider, request)
+    def accept_fallback_output(candidate: Provider, output: LlmExtractionOutput) -> None:
+        result = build_extraction_result(
+            document=document,
+            source_type=SourceType.jd,
+            output=output,
+            provider=candidate,
+            requirement_resolver=classify_requirement,
+        )
+        require_verified_claim_when_claims_exist(output, result)
+
+    provider_used, output = run_extraction_provider(
+        provider,
+        request,
+        accept_output=(
+            accept_fallback_output if isinstance(provider, ProviderFallbackChain) else None
+        ),
+    )
     return build_extraction_result(
         document=document,
         source_type=SourceType.jd,
         output=output,
-        provider=provider,
+        provider=provider_used,
         requirement_resolver=classify_requirement,
     )

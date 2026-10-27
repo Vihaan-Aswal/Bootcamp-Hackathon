@@ -23,6 +23,7 @@ class MockProvider:
     name = "mock"
     model = "local-registry-rules"
     supports_json_schema = False
+    external = False
 
     def __init__(
         self, responder: Callable[[StructuredGenerationRequest], str] | None = None

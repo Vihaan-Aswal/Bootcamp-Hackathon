@@ -38,6 +38,34 @@ class Provider(Protocol):
     name: str
     model: str | None
     supports_json_schema: bool
+    external: bool
 
     def generate_structured(self, request: StructuredGenerationRequest) -> str:
         """Return model output text; callers must validate it with Pydantic."""
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderFallbackChain:
+    """Ordered providers tried until one returns locally valid structured output."""
+
+    providers: tuple[Provider, ...]
+    name: str = "fallback"
+    model: str | None = None
+
+    @property
+    def supports_json_schema(self) -> bool:
+        return all(provider.supports_json_schema for provider in self.providers)
+
+    @property
+    def external(self) -> bool:
+        return any(provider.external for provider in self.providers)
+
+    @property
+    def route(self) -> tuple[str, ...]:
+        return tuple(
+            f"{provider.name}/{provider.model}" if provider.model else provider.name
+            for provider in self.providers
+        )
+
+
+ProviderRoute = Provider | ProviderFallbackChain
