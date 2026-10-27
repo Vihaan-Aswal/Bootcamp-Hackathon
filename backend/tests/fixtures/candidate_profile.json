@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "33333333-3333-4333-8333-333333333333",
+  "created_at": "2026-07-20T09:00:00Z",
+  "updated_at": "2026-07-20T09:30:00Z",
+  "basic_details": {
+    "full_name": "Asha Example",
+    "email": "asha@example.com"
+  },
+  "skills": [
+    {
+      "skill_name": "Python",
+      "skill_id": "python",
+      "category_code": "COD",
+      "evidence": null,
+      "evidence_status": "manual",
+      "confidence": "medium",
+      "requirement_type": null,
+      "origin": "manual",
+      "source_ref": null
+    },
+    {
+      "skill_name": "TypeScript",
+      "skill_id": "typescript",
+      "category_code": "COD",
+      "evidence": "Built a dashboard in TypeScript.",
+      "evidence_status": "exact",
+      "confidence": "high",
+      "requirement_type": null,
+      "origin": "resume",
+      "source_ref": {
+        "element_id": "d7",
+        "filename": "sample-resume.docx",
+        "page": null,
+        "paragraph": 7,
+        "heading": "Projects"
+      }
+    }
+  ],
+  "education": [
+    {
+      "institution": "Example Institute of Technology",
+      "qualification": "B.Tech",
+      "field_of_study": "Computer Science",
+      "start_year": 2021,
+      "end_year": 2025,
+      "evidence": null,
+      "source_ref": null
+    }
+  ],
+  "hackathons": [
+    {
+      "name": "Blitz 2026",
+      "summary": "Top 10 finalist",
+      "year": 2026
+    }
+  ],
+  "internships": [
+    {
+      "employer": "Example Labs",
+      "role": "Intern",
+      "summary": "Automated reporting",
+      "year": 2024
+    }
+  ],
+  "certifications": [
+    {
+      "name": "AWS Cloud Practitioner",
+      "issuer": "Amazon",
+      "year": 2025
+    }
+  ],
+  "preferred_roles": [
+    "Backend Engineer",
+    "Data Engineer"
+  ],
+  "cv_filename": "sample-resume.docx",
+  "skillset_levels": [
+    {
+      "category_code": "COD",
+      "level": 7,
+      "evidence_note": "Two shipped projects",
+      "source": "self_reported"
+    },
+    {
+      "category_code": "DSA",
+      "level": 5,
+      "evidence_note": null,
+      "source": "self_reported"
+    }
+  ]
+}

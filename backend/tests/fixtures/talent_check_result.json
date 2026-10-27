@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.0.0",
+  "company_id": "google",
+  "profile_id": "33333333-3333-4333-8333-333333333333",
+  "company_data_version": "63075bab652a31b4234d1f2eddffcbacf97c70bfe8adc826080aa1e3ce7858b4",
+  "status": "complete",
+  "readiness_score": 85,
+  "missing_categories": [],
+  "rows": [
+    {
+      "category_code": "COD",
+      "category_name": "Coding",
+      "required_level": 8,
+      "candidate_level": 8,
+      "gap": false,
+      "gap_size": 0,
+      "bloom_code": "CR"
+    },
+    {
+      "category_code": "DSA",
+      "category_name": "Data Structures and Algorithms",
+      "required_level": 9,
+      "candidate_level": 6,
+      "gap": true,
+      "gap_size": 3,
+      "bloom_code": "CR"
+    },
+    {
+      "category_code": "OOD",
+      "category_name": "Object-Oriented Programming and Design",
+      "required_level": 8,
+      "candidate_level": 7,
+      "gap": true,
+      "gap_size": 1,
+      "bloom_code": "CR"
+    },
+    {
+      "category_code": "APTI",
+      "category_name": "Aptitude and Problem Solving",
+      "required_level": 9,
+      "candidate_level": 8,
+      "gap": true,
+      "gap_size": 1,
+      "bloom_code": "CR"
+    },
+    {
+      "category_code": "COMM",
+      "category_name": "Communication Skills",
+      "required_level": 7,
+      "candidate_level": 7,
+      "gap": false,
+      "gap_size": 0,
+      "bloom_code": "EV"
+    },
+    {
+      "category_code": "AI",
+      "category_name": "AI Native Engineering",
+      "required_level": 7,
+      "candidate_level": 6,
+      "gap": true,
+      "gap_size": 1,
+      "bloom_code": "EV"
+    },
+    {
+      "category_code": "CLOUD",
+      "category_name": "DevOps and Cloud",
+      "required_level": 9,
+      "candidate_level": 5,
+      "gap": true,
+      "gap_size": 4,
+      "bloom_code": "EV"
+    },
+    {
+      "category_code": "SQL",
+      "category_name": "SQL and Design",
+      "required_level": 8,
+      "candidate_level": 8,
+      "gap": false,
+      "gap_size": 0,
+      "bloom_code": "EV"
+    },
+    {
+      "category_code": "SWE",
+      "category_name": "Software Engineering",
+      "required_level": 9,
+      "candidate_level": 7,
+      "gap": true,
+      "gap_size": 2,
+      "bloom_code": "EV"
+    },
+    {
+      "category_code": "SYSD",
+      "category_name": "System Design and Architecture",
+      "required_level": 4,
+      "candidate_level": 4,
+      "gap": false,
+      "gap_size": 0,
+      "bloom_code": "AS"
+    },
+    {
+      "category_code": "NETW",
+      "category_name": "Computer Networking",
+      "required_level": 9,
+      "candidate_level": 6,
+      "gap": true,
+      "gap_size": 3,
+      "bloom_code": "CR"
+    },
+    {
+      "category_code": "OS",
+      "category_name": "Operating System",
+      "required_level": 9,
+      "candidate_level": 8,
+      "gap": true,
+      "gap_size": 1,
+      "bloom_code": "CR"
+    }
+  ],
+  "formula_version": "readiness_v1"
+}

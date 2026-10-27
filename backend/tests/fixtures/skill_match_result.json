@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0.0",
+  "jd_document_id": "11111111-1111-4111-8111-111111111111",
+  "profile_id": "33333333-3333-4333-8333-333333333333",
+  "status": "scorable",
+  "match_score": 67,
+  "distinct_required_skill_count": 3,
+  "matched": [
+    {
+      "skill_name": "Python",
+      "skill_id": "python",
+      "category_code": "COD",
+      "evidence": "Strong Python experience required.",
+      "evidence_status": "exact",
+      "confidence": "high",
+      "requirement_type": "required",
+      "origin": "jd",
+      "source_ref": {
+        "element_id": "p3",
+        "filename": "sample-jd.pdf",
+        "page": 2,
+        "paragraph": null,
+        "heading": "What We're Looking For"
+      }
+    }
+  ],
+  "missing_required": [
+    {
+      "skill_name": "REST APIs",
+      "skill_id": "rest-api",
+      "category_code": "SYSD",
+      "evidence": "Design REST APIs for internal services.",
+      "evidence_status": "exact",
+      "confidence": "high",
+      "requirement_type": "required",
+      "origin": "jd",
+      "source_ref": {
+        "element_id": "p3",
+        "filename": "sample-jd.pdf",
+        "page": 2,
+        "paragraph": null,
+        "heading": "What We're Looking For"
+      }
+    }
+  ],
+  "preferred": [
+    {
+      "skill_name": "Kubernetes",
+      "skill_id": "kubernetes",
+      "category_code": "CLOUD",
+      "evidence": "Experience with Kubernetes is a plus.",
+      "evidence_status": "normalized",
+      "confidence": "medium",
+      "requirement_type": "preferred",
+      "origin": "jd",
+      "source_ref": {
+        "element_id": "p4",
+        "filename": "sample-jd.pdf",
+        "page": 2,
+        "paragraph": null,
+        "heading": "What We're Looking For"
+      }
+    }
+  ],
+  "possible": [
+    {
+      "jd_skill_name": "REST APIs",
+      "candidate_skill_name": "HTTP",
+      "similarity": 0.62,
+      "method": "fuzzy"
+    }
+  ],
+  "match_methods": [
+    "registry_id",
+    "normalized_exact"
+  ],
+  "registry_version": "1.0.0",
+  "formula_version": "match_v1"
+}

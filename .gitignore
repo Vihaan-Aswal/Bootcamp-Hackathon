@@ -1,0 +1,46 @@
+# Secrets and local environment files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local planning documents: requirements are restated in README.md and the code
+/prd.md
+/implementation_plan.md
+
+# Python
+**/__pycache__/
+*.py[cod]
+**/.venv/
+**/venv/
+*.egg-info/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+
+# JavaScript / build outputs
+**/node_modules/
+**/dist/
+**/.vite/
+**/coverage/
+
+# Local files, generated uploads and temporary data
+/uploads/
+/tmp/
+*.log
+*.tmp
+
+# Generated OpenAPI snapshot; recreate with `npm run generate:api-types`
+/frontend/openapi.json
+
+# Supplied source documents stay local (PDFs and the checklist workbook)
+/references/requirements/*.pdf
+/references/milestones/*.xlsx
+
+# A recovered official company snapshot is confidential until confirmed
+/data/reference/official/*
+!/data/reference/official/.gitkeep
+
+# Official samples may contain personal information; keep them local by default.
+/data/samples/official/*
+!/data/samples/official/README.md
+!/data/samples/official/.gitkeep

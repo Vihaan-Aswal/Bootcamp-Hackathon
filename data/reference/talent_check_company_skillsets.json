@@ -1,0 +1,290 @@
+{
+  "schema_version": "1.0.0",
+  "dataset": {
+    "source_status": "provisional_csv_fallback",
+    "official_json_confirmed": false,
+    "source_file": "data/reference/source/staging_company_skill_levels_fixed.csv",
+    "source_sha256": "A531A188DC2EC1373E986D778F74F868B6CC0A30FAA69A85328CBB9BA3A97E1E",
+    "source_company_count": 116,
+    "included_target_company_count": 3,
+    "note": "Generated from the supplied Level 2 CSV by parsing the numeric level and preserving the Bloom code. This is not a recovered copy of the official hackathon JSON."
+  },
+  "companies": [
+    {
+      "company_id": "google",
+      "display_name": "Google",
+      "source_company_id": 4,
+      "source_company_name": "Google LLC (Subsidiary of Alphabet Inc.)",
+      "skillsets": [
+        {
+          "category_code": "COD",
+          "category_name": "Coding",
+          "required_level": 8,
+          "bloom_code": "CR",
+          "source_value": "8-CR"
+        },
+        {
+          "category_code": "DSA",
+          "category_name": "Data Structures and Algorithms",
+          "required_level": 9,
+          "bloom_code": "CR",
+          "source_value": "9-CR"
+        },
+        {
+          "category_code": "OOD",
+          "category_name": "Object-Oriented Programming and Design",
+          "required_level": 8,
+          "bloom_code": "CR",
+          "source_value": "8-CR"
+        },
+        {
+          "category_code": "APTI",
+          "category_name": "Aptitude and Problem Solving",
+          "required_level": 9,
+          "bloom_code": "CR",
+          "source_value": "9-CR"
+        },
+        {
+          "category_code": "COMM",
+          "category_name": "Communication Skills",
+          "required_level": 7,
+          "bloom_code": "EV",
+          "source_value": "7-EV"
+        },
+        {
+          "category_code": "AI",
+          "category_name": "AI-Native Engineering",
+          "required_level": 7,
+          "bloom_code": "EV",
+          "source_value": "7-EV"
+        },
+        {
+          "category_code": "CLOUD",
+          "category_name": "DevOps and Cloud",
+          "required_level": 9,
+          "bloom_code": "EV",
+          "source_value": "9-EV"
+        },
+        {
+          "category_code": "SQL",
+          "category_name": "SQL and Design",
+          "required_level": 8,
+          "bloom_code": "EV",
+          "source_value": "8-EV"
+        },
+        {
+          "category_code": "SWE",
+          "category_name": "Software Engineering",
+          "required_level": 9,
+          "bloom_code": "EV",
+          "source_value": "9 - EV"
+        },
+        {
+          "category_code": "SYSD",
+          "category_name": "System Design and Architecture",
+          "required_level": 4,
+          "bloom_code": "AS",
+          "source_value": "4-AS"
+        },
+        {
+          "category_code": "NETW",
+          "category_name": "Computer Networking",
+          "required_level": 9,
+          "bloom_code": "CR",
+          "source_value": "9-CR"
+        },
+        {
+          "category_code": "OS",
+          "category_name": "Operating System",
+          "required_level": 9,
+          "bloom_code": "CR",
+          "source_value": "9-CR"
+        }
+      ]
+    },
+    {
+      "company_id": "microsoft",
+      "display_name": "Microsoft",
+      "source_company_id": 78,
+      "source_company_name": "Microsoft Corporation",
+      "skillsets": [
+        {
+          "category_code": "COD",
+          "category_name": "Coding",
+          "required_level": 6,
+          "bloom_code": "AS",
+          "source_value": "6-AS"
+        },
+        {
+          "category_code": "DSA",
+          "category_name": "Data Structures and Algorithms",
+          "required_level": 9,
+          "bloom_code": "EV",
+          "source_value": "9-EV"
+        },
+        {
+          "category_code": "OOD",
+          "category_name": "Object-Oriented Programming and Design",
+          "required_level": 8,
+          "bloom_code": "CR",
+          "source_value": "8-CR"
+        },
+        {
+          "category_code": "APTI",
+          "category_name": "Aptitude and Problem Solving",
+          "required_level": 8,
+          "bloom_code": "EV",
+          "source_value": "8-EV"
+        },
+        {
+          "category_code": "COMM",
+          "category_name": "Communication Skills",
+          "required_level": 7,
+          "bloom_code": "EV",
+          "source_value": "7-EV"
+        },
+        {
+          "category_code": "AI",
+          "category_name": "AI-Native Engineering",
+          "required_level": 8,
+          "bloom_code": "EV",
+          "source_value": "8-EV"
+        },
+        {
+          "category_code": "CLOUD",
+          "category_name": "DevOps and Cloud",
+          "required_level": 7,
+          "bloom_code": "EV",
+          "source_value": "7-EV"
+        },
+        {
+          "category_code": "SQL",
+          "category_name": "SQL and Design",
+          "required_level": 8,
+          "bloom_code": "AS",
+          "source_value": "8-AS"
+        },
+        {
+          "category_code": "SWE",
+          "category_name": "Software Engineering",
+          "required_level": 9,
+          "bloom_code": "EV",
+          "source_value": "9 - EV"
+        },
+        {
+          "category_code": "SYSD",
+          "category_name": "System Design and Architecture",
+          "required_level": 8,
+          "bloom_code": "CR",
+          "source_value": "8-CR"
+        },
+        {
+          "category_code": "NETW",
+          "category_name": "Computer Networking",
+          "required_level": 8,
+          "bloom_code": "EV",
+          "source_value": "8-EV"
+        },
+        {
+          "category_code": "OS",
+          "category_name": "Operating System",
+          "required_level": 8,
+          "bloom_code": "EV",
+          "source_value": "8-EV"
+        }
+      ]
+    },
+    {
+      "company_id": "oracle_fss",
+      "display_name": "Oracle Financial Services Software",
+      "source_company_id": 24,
+      "source_company_name": "Oracle Financial Services Software Limited",
+      "skillsets": [
+        {
+          "category_code": "COD",
+          "category_name": "Coding",
+          "required_level": 5,
+          "bloom_code": "AP",
+          "source_value": "5-AP"
+        },
+        {
+          "category_code": "DSA",
+          "category_name": "Data Structures and Algorithms",
+          "required_level": 6,
+          "bloom_code": "AP",
+          "source_value": "6-AP"
+        },
+        {
+          "category_code": "OOD",
+          "category_name": "Object-Oriented Programming and Design",
+          "required_level": 6,
+          "bloom_code": "EV",
+          "source_value": "6-EV"
+        },
+        {
+          "category_code": "APTI",
+          "category_name": "Aptitude and Problem Solving",
+          "required_level": 6,
+          "bloom_code": "AP",
+          "source_value": "6-AP"
+        },
+        {
+          "category_code": "COMM",
+          "category_name": "Communication Skills",
+          "required_level": 6,
+          "bloom_code": "AS",
+          "source_value": "6-AS"
+        },
+        {
+          "category_code": "AI",
+          "category_name": "AI-Native Engineering",
+          "required_level": 6,
+          "bloom_code": "AS",
+          "source_value": "6-AS"
+        },
+        {
+          "category_code": "CLOUD",
+          "category_name": "DevOps and Cloud",
+          "required_level": 5,
+          "bloom_code": "AP",
+          "source_value": "5-AP"
+        },
+        {
+          "category_code": "SQL",
+          "category_name": "SQL and Design",
+          "required_level": 6,
+          "bloom_code": "AP",
+          "source_value": "6-AP"
+        },
+        {
+          "category_code": "SWE",
+          "category_name": "Software Engineering",
+          "required_level": 7,
+          "bloom_code": "AS",
+          "source_value": "7 - AS"
+        },
+        {
+          "category_code": "SYSD",
+          "category_name": "System Design and Architecture",
+          "required_level": 5,
+          "bloom_code": "CR",
+          "source_value": "5-CR"
+        },
+        {
+          "category_code": "NETW",
+          "category_name": "Computer Networking",
+          "required_level": 5,
+          "bloom_code": "AP",
+          "source_value": "5-AP"
+        },
+        {
+          "category_code": "OS",
+          "category_name": "Operating System",
+          "required_level": 5,
+          "bloom_code": "AP",
+          "source_value": "5-AP"
+        }
+      ]
+    }
+  ]
+}

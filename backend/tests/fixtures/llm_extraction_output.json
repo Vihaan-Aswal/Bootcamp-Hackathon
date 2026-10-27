@@ -1,0 +1,23 @@
+{
+  "skills": [
+    {
+      "skill_name": "Python",
+      "category_code": "COD",
+      "requirement_type": "required",
+      "confidence": "high",
+      "evidence_quote": "Strong Python experience required.",
+      "source_element_id": "p3"
+    },
+    {
+      "skill_name": "Kubernetes",
+      "category_code": "CLOUD",
+      "requirement_type": "preferred",
+      "confidence": "medium",
+      "evidence_quote": "Experience with Kubernetes is a plus.",
+      "source_element_id": "p4"
+    }
+  ],
+  "education": [],
+  "projects": [],
+  "experience": []
+}

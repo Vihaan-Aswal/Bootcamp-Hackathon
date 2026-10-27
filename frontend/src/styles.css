@@ -1,0 +1,112 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  background: #f7f7f5;
+  color: #1c1c1a;
+}
+
+.app {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.9rem;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #55554f;
+}
+
+section {
+  margin-top: 2.25rem;
+}
+
+.subtitle,
+.muted {
+  color: #5c5c56;
+}
+
+.muted {
+  font-size: 0.85rem;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modules li,
+.cards li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.5rem 0.75rem;
+  background: #fff;
+  border: 1px solid #e2e2dc;
+  border-radius: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #ececE6;
+  color: #55554f;
+}
+
+.badge-ready {
+  background: #d8f0dd;
+  color: #1d6b33;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.chips li {
+  border: 1px solid #dedeD6;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  background: #fff;
+  font-size: 0.85rem;
+}
+
+.notice {
+  border-left: 3px solid #d9a441;
+  background: #fff8e8;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.warnings,
+.error {
+  border-left: 3px solid #c94c4c;
+  background: #fdeeee;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.35rem;
+  font-size: 0.9rem;
+}
+
+code {
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.85em;
+}

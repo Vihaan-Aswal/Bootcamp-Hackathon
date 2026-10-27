@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0.0",
+  "document_id": "22222222-2222-4222-8222-222222222222",
+  "source_type": "resume",
+  "filename": "sample-resume.docx",
+  "company": null,
+  "role": null,
+  "skills": [
+    {
+      "skill_name": "TypeScript",
+      "skill_id": "typescript",
+      "category_code": "COD",
+      "evidence": "Built a dashboard in TypeScript.",
+      "evidence_status": "exact",
+      "confidence": "high",
+      "requirement_type": null,
+      "origin": "resume",
+      "source_ref": {
+        "element_id": "d7",
+        "filename": "sample-resume.docx",
+        "page": null,
+        "paragraph": 7,
+        "heading": "Projects"
+      }
+    }
+  ],
+  "education": [
+    {
+      "institution": "Example Institute of Technology",
+      "qualification": "B.Tech",
+      "field_of_study": "Computer Science",
+      "start_year": 2021,
+      "end_year": 2025,
+      "evidence": "B.Tech in Computer Science, Example Institute of Technology (2021-2025)",
+      "source_ref": {
+        "element_id": "d2",
+        "filename": "sample-resume.docx",
+        "page": null,
+        "paragraph": 2,
+        "heading": "Education"
+      }
+    }
+  ],
+  "projects": [
+    {
+      "name": "Campus marketplace",
+      "summary": "React and FastAPI app used by 400 students",
+      "evidence": "Campus marketplace - React and FastAPI app used by 400 students",
+      "source_ref": {
+        "element_id": "d7",
+        "filename": "sample-resume.docx",
+        "page": null,
+        "paragraph": 7,
+        "heading": "Projects"
+      }
+    }
+  ],
+  "experience": [
+    {
+      "employer": "Example Labs",
+      "title": "Intern",
+      "start_year": 2024,
+      "end_year": 2024,
+      "summary": "Automated reporting with Python",
+      "evidence": "Intern, Example Labs (2024) - automated reporting with Python",
+      "source_ref": {
+        "element_id": "d5",
+        "filename": "sample-resume.docx",
+        "page": null,
+        "paragraph": 5,
+        "heading": "Experience"
+      }
+    }
+  ],
+  "metadata": {
+    "provider": "mock",
+    "model": "mock-extraction",
+    "source_format": "docx",
+    "element_count": 9,
+    "page_count": null,
+    "redaction_applied": true,
+    "warnings": []
+  },
+  "rejected_claims": []
+}

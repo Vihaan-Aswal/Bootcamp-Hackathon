@@ -1,0 +1,92 @@
+{
+  "company_id": "google",
+  "display_name": "Google",
+  "source_company_id": 4,
+  "source_company_name": "Google LLC (Subsidiary of Alphabet Inc.)",
+  "skillsets": [
+    {
+      "category_code": "COD",
+      "category_name": "Coding",
+      "required_level": 8,
+      "bloom_code": "CR",
+      "source_value": "8-CR"
+    },
+    {
+      "category_code": "DSA",
+      "category_name": "Data Structures and Algorithms",
+      "required_level": 9,
+      "bloom_code": "CR",
+      "source_value": "9-CR"
+    },
+    {
+      "category_code": "OOD",
+      "category_name": "Object-Oriented Programming and Design",
+      "required_level": 8,
+      "bloom_code": "CR",
+      "source_value": "8-CR"
+    },
+    {
+      "category_code": "APTI",
+      "category_name": "Aptitude and Problem Solving",
+      "required_level": 9,
+      "bloom_code": "CR",
+      "source_value": "9-CR"
+    },
+    {
+      "category_code": "COMM",
+      "category_name": "Communication Skills",
+      "required_level": 7,
+      "bloom_code": "EV",
+      "source_value": "7-EV"
+    },
+    {
+      "category_code": "AI",
+      "category_name": "AI Native Engineering",
+      "required_level": 7,
+      "bloom_code": "EV",
+      "source_value": "7-EV"
+    },
+    {
+      "category_code": "CLOUD",
+      "category_name": "DevOps and Cloud",
+      "required_level": 9,
+      "bloom_code": "EV",
+      "source_value": "9-EV"
+    },
+    {
+      "category_code": "SQL",
+      "category_name": "SQL and Design",
+      "required_level": 8,
+      "bloom_code": "EV",
+      "source_value": "8-EV"
+    },
+    {
+      "category_code": "SWE",
+      "category_name": "Software Engineering",
+      "required_level": 9,
+      "bloom_code": "EV",
+      "source_value": "9-EV"
+    },
+    {
+      "category_code": "SYSD",
+      "category_name": "System Design and Architecture",
+      "required_level": 4,
+      "bloom_code": "AS",
+      "source_value": "4-AS"
+    },
+    {
+      "category_code": "NETW",
+      "category_name": "Computer Networking",
+      "required_level": 9,
+      "bloom_code": "CR",
+      "source_value": "9-CR"
+    },
+    {
+      "category_code": "OS",
+      "category_name": "Operating System",
+      "required_level": 9,
+      "bloom_code": "CR",
+      "source_value": "9-CR"
+    }
+  ]
+}

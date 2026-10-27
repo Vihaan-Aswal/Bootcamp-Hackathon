@@ -1,0 +1,121 @@
+id,skill_area,levels,topics
+1,Coding,Level 1, Basic programming concepts; Variables and data types; Input-output handling; Control flow statements
+2,Coding,Level 2, Functions and modular coding; Loops and conditionals mastery; Basic debugging techniques; Code readability and formatting
+3,Coding,Level 3, Arrays and strings handling; Basic problem-solving patterns; Introduction to recursion; Error handling concepts
+4,Coding,Level 4, Object-oriented programming basics; Classes and objects; Basic data structures usage; Code reuse and modular design
+5,Coding,Level 5, Standard algorithms implementation; File handling; Use of libraries and APIs; Basic time and space complexity analysis
+6,Coding,Level 6, Advanced data structures usage; Algorithmic problem solving; Code optimization techniques; Version control with Git
+7,Coding,Level 7, Design patterns basics; Writing scalable and maintainable code; Exception handling strategies; Debugging complex codebases
+8,Coding,Level 8, Performance optimization; Memory management concepts; Writing testable code; Competitive programming patterns
+9,Coding,Level 9, System-level coding practices; Low-level design implementation; Code review and refactoring expertise; Handling edge cases at scale
+10,Coding,Level 10, Architecture-level coding decisions; Building reusable frameworks; High-performance and concurrent programming; Code quality governance and best practices
+11,Data Structures and Algorithms,Level 1, Understanding algorithms vs programs; Basic time and space complexity intuition; Primitive data types; Arrays and strings basics
+12,Data Structures and Algorithms,Level 2, Linear search; Basic recursion concepts; Arrays operations; String manipulation techniques; Introduction to Big-O notation
+13,Data Structures and Algorithms,Level 3, Stacks and queues; Linked lists (singly and doubly); Basic recursion problems; Time vs space trade-offs
+14,Data Structures and Algorithms,Level 4," Binary search; Sorting algorithms (bubble, selection, insertion); Hashing fundamentals; Two-pointer technique"
+15,Data Structures and Algorithms,Level 5, Trees basics; Binary trees and traversals; Recursion optimization; Basic greedy algorithms; Introduction to problem decomposition
+16,Data Structures and Algorithms,Level 6, Binary search trees; Heaps and priority queues; Hash maps and collision handling; Sliding window technique; Introductory dynamic programming
+17,Data Structures and Algorithms,Level 7, Graph representations; BFS and DFS; Graph cycle detection; Advanced dynamic programming; Backtracking problems
+18,Data Structures and Algorithms,Level 8," Shortest path algorithms (Dijkstra, BFS-based); Union-Find and MST concepts; Advanced recursion and memoization; Time-space optimization strategies"
+19,Data Structures and Algorithms,Level 9," Advanced graph algorithms (Topological sort, SCC); Trie and segment tree; Interval problems; Algorithmic complexity analysis at scale; Competitive programming patterns"
+20,Data Structures and Algorithms,Level 10, Algorithm design paradigms; Custom data structure design; Performance optimization for large-scale systems; Memory-efficient algorithms
+21,Object-Oriented Programming and Design,Level 1, Object-oriented paradigm overview; Classes and objects; Attributes and methods; Basic encapsulation
+22,Object-Oriented Programming and Design,Level 2, Constructors and destructors; Access modifiers; Method overloading; Basic class relationships
+23,Object-Oriented Programming and Design,Level 3, Inheritance concepts; Method overriding; Polymorphism basics; Abstraction using interfaces and abstract classes
+24,Object-Oriented Programming and Design,Level 4, Composition vs inheritance; Real-world modeling using OOP; UML class diagrams; Encapsulation best practices
+25,Object-Oriented Programming and Design,Level 5, SOLID principles; Interface-driven design; Dependency relationships; Code reusability techniques
+26,Object-Oriented Programming and Design,Level 6," Design patterns basics (Singleton, Factory); Exception handling design; Loose coupling and cohesion; Refactoring object models"
+27,Object-Oriented Programming and Design,Level 7," Advanced design patterns (Observer, Strategy, Decorator); Object lifecycle management; Domain-driven design basics"
+28,Object-Oriented Programming and Design,Level 8, Design for scalability and maintainability; Anti-pattern identification; Object collaboration patterns; Testable OOP design
+29,Object-Oriented Programming and Design,Level 9, Low-level system design using OOP; Performance implications of OOP; Memory management in object-heavy systems; Design reviews and refactoring strategies
+30,Object-Oriented Programming and Design,Level 10, Architecture-level object modeling; Framework and library design; Large-scale system object orchestration; Enterprise-grade design standardization
+31,Aptitude and Problem Solving,Level 1, Number system basics; Percentages and ratios; Averages; Simple arithmetic operations
+32,Aptitude and Problem Solving,Level 2," Profit and loss; Simple and compound interest; Time and work fundamentals; Speed, time, and distance"
+33,Aptitude and Problem Solving,Level 3, Linear equations; Basic algebraic manipulation; Logical reasoning basics; Series and sequences
+34,Aptitude and Problem Solving,Level 4," Data interpretation (tables, bar charts); Ratio-based problem solving; Mixtures and alligation; Basic probability"
+35,Aptitude and Problem Solving,Level 5, Permutations and combinations; Advanced averages and ratios; Time and work with pipes and cisterns; Logical puzzles
+36,Aptitude and Problem Solving,Level 6, Probability with conditional cases; Set theory applications; Quantitative comparison problems; Analytical reasoning
+37,Aptitude and Problem Solving,Level 7, Advanced logical reasoning; Syllogisms; Blood relations and direction sense; Constraint-based problem solving
+38,Aptitude and Problem Solving,Level 8, Complex data interpretation; Caselet-based reasoning; Optimization under constraints; Multi-step quantitative problems
+39,Aptitude and Problem Solving,Level 9, High-difficulty aptitude problems; Pattern recognition under time pressure; Competitive exam-level reasoning; Accuracy-speed tradeoff mastery
+40,Aptitude and Problem Solving,Level 10, Aptitude strategy design; Mental math optimization techniques; Problem decomposition frameworks; Competitive test mastery and mentoring
+41,Communication Skills,Level 1, Basic verbal communication; Active listening fundamentals; Basic vocabulary and clarity; Professional etiquette basics
+42,Communication Skills,Level 2, Sentence structuring; Everyday workplace communication; Asking and answering questions clearly; Basic email writing
+43,Communication Skills,Level 3, Interpersonal communication; Non-verbal communication awareness; Listening for understanding; Basic presentation skills
+44,Communication Skills,Level 4, Structured speaking; Professional email and chat communication; Clarity in technical explanations; Audience awareness
+45,Communication Skills,Level 5, Presentation delivery skills; Business communication etiquette; Persuasive communication basics; Feedback giving and receiving
+46,Communication Skills,Level 6, Stakeholder communication; Meeting participation and articulation; Conflict-handling conversations; Written communication precision
+47,Communication Skills,Level 7, Technical communication for non-technical audiences; Storytelling for impact; Negotiation fundamentals; Cross-team communication
+48,Communication Skills,Level 8, Executive communication; Data-driven storytelling; Handling difficult conversations; Influence without authority
+49,Communication Skills,Level 9, High-stakes communication; Client-facing discussions; Leadership communication; Communication in ambiguity and pressure
+50,Communication Skills,Level 10, Strategic communication design; Organizational communication frameworks; Public speaking mastery; Mentoring and communication coaching
+51,AI Native Engineering,Level 1, Understanding AI-assisted development concepts; Prompt basics for code generation; Using AI for syntax help; AI as coding assistant
+52,AI Native Engineering,Level 2, Effective prompt structuring; Using AI for debugging; Code explanation and refactoring via AI; Understanding AI limitations
+53,AI Native Engineering,Level 3, AI-assisted problem decomposition; Generating boilerplate code; Using AI for documentation; Validating AI-generated output
+54,AI Native Engineering,Level 4, Rapid prototyping with AI tools; AI-assisted API integration; Using AI for test case generation; Prompt iteration techniques
+55,AI Native Engineering,Level 5, Building small applications using AI workflows; AI-driven code optimization; Using AI for data modeling and schema design; Version control with AI assistance
+56,AI Native Engineering,Level 6, AI-augmented development pipelines; Prompt chaining and context management; Using AI for refactoring large codebases; AI-based test automation
+57,AI Native Engineering,Level 7," Designing AI-first development workflows; Tooling integration (Copilot, ChatGPT, IDE AI); Guardrails for AI-generated code; Performance tuning with AI"
+58,AI Native Engineering,Level 8, AI-assisted system design; Multi-agent AI workflows; Evaluating and correcting hallucinations; Secure and compliant AI usage
+59,AI Native Engineering,Level 9, Building AI-powered developer platforms; Custom prompt engineering frameworks; AI-driven productivity optimization; Scaling AI usage across teams
+60,AI Native Engineering,Level 10, Designing AI-native engineering ecosystems; Creating internal AI copilots; Engineering governance for AI-driven development; Innovation using autonomous coding systems
+61,DevOps and Cloud,Level 1, Basics of operating systems; Introduction to cloud computing; Understanding virtualization; Command line fundamentals
+62,DevOps and Cloud,Level 2," Linux file system and process management; Basics of networking; Introduction to Git; Cloud service models (IaaS, PaaS, SaaS)"
+63,DevOps and Cloud,Level 3, Virtual machines and containers overview; Basic AWS/Azure/GCP services; Environment configuration; Shell scripting basics
+64,DevOps and Cloud,Level 4, CI/CD fundamentals; Docker usage and containerization; Cloud storage and compute management; Basic monitoring concepts
+65,DevOps and Cloud,Level 5, Infrastructure as Code fundamentals; Terraform or CloudFormation basics; CI/CD pipeline implementation; Logging and monitoring tools
+66,DevOps and Cloud,Level 6, Kubernetes fundamentals; Container orchestration; Secrets and configuration management; Cloud security basics
+67,DevOps and Cloud,Level 7, Scalable cloud architecture design; High availability and fault tolerance; Advanced CI/CD pipelines; Observability and alerting
+68,DevOps and Cloud,Level 8, Cost optimization strategies; Auto-scaling and load balancing; Multi-region deployment; Cloud security best practices
+69,DevOps and Cloud,Level 9, DevOps for large-scale systems; SRE practices; Performance tuning and reliability engineering; Incident management and RCA
+70,DevOps and Cloud,Level 10, Cloud-native architecture design; Platform engineering; DevOps transformation strategy; Building and scaling internal developer platforms
+71,SQL and Design,Level 1, Relational database basics; Tables and rows; Primary keys; Basic SELECT queries
+72,SQL and Design,Level 2, WHERE clauses and filtering; Sorting and aggregation; Basic joins; NULL handling
+73,SQL and Design,Level 3, Group By and HAVING; Subqueries; Basic constraints; Simple normalization concepts
+74,SQL and Design,Level 4," Joins in depth (inner, left, right); Index basics; CRUD operations; Query optimization fundamentals"
+75,SQL and Design,Level 5, Database normalization (1NFâ€“3NF); ER diagram understanding; Foreign keys and relationships; Stored procedures basics
+76,SQL and Design,Level 6, Advanced joins and subqueries; Indexing strategies; Transactions and ACID properties; Query performance tuning
+77,SQL and Design,Level 7, Database design for applications; Denormalization trade-offs; Execution plan analysis; Handling large datasets
+78,SQL and Design,Level 8, Advanced indexing techniques; Partitioning and sharding concepts; Database security and access control; Optimizing complex queries
+79,SQL and Design,Level 9, Scalable database design; High availability and replication; Schema versioning and migrations; Performance troubleshooting at scale
+80,SQL and Design,Level 10, Database architecture design; Distributed SQL systems; Data modeling for large-scale systems; Enterprise-level data strategy and governance
+81,Software Engineering,Level 1, Software development lifecycle basics; Programming fundamentals; Version control basics; Debugging fundamentals
+82,Software Engineering,Level 2, Procedural and object-oriented programming concepts; Basic data structures; Code documentation; Basic testing concepts
+83,Software Engineering,Level 3, Modular programming; Error handling techniques; Introduction to software design principles; Code readability and standards
+84,Software Engineering,Level 4, Requirement analysis; Version control workflows; Unit testing practices; Basic system design concepts
+85,Software Engineering,Level 5, Design patterns fundamentals; API design basics; Integration testing; Agile and Scrum practices
+86,Software Engineering,Level 6, Clean code principles; Refactoring techniques; Performance-aware coding; Secure coding practices
+87,Software Engineering,Level 7, Scalable software architecture; Microservices fundamentals; Advanced debugging and profiling; CI/CD integration
+88,Software Engineering,Level 8, Distributed systems concepts; Fault tolerance and resiliency; Observability and monitoring; Technical debt management
+89,Software Engineering,Level 9, System design for scale; High-performance system optimization; Codebase governance; Cross-team engineering collaboration
+90,Software Engineering,Level 10, Software architecture leadership; Designing large-scale platforms; Engineering process innovation; Technology strategy and standardization
+91,System Design and Architecture,Level 1, Basic system components; Client-server architecture; Understanding scalability basics; Introduction to system design concepts
+92,System Design and Architecture,Level 2, Monolithic architecture; Basic networking concepts; API fundamentals; Data flow understanding
+93,System Design and Architecture,Level 3, Load vs performance concepts; Introduction to databases in system design; Caching basics; Simple architecture diagrams
+94,System Design and Architecture,Level 4, RESTful API design; Stateless vs stateful systems; Database selection basics; Basic scalability strategies
+95,System Design and Architecture,Level 5, Load balancing concepts; Caching strategies; Horizontal vs vertical scaling; High-level system design interviews
+96,System Design and Architecture,Level 6, Microservices architecture; Message queues and event-driven systems; Data consistency models; API gateway design
+97,System Design and Architecture,Level 7, Distributed systems fundamentals; CAP theorem; Fault tolerance and resiliency; Service discovery
+98,System Design and Architecture,Level 8, High availability architecture; Distributed caching; Sharding and replication; Observability and monitoring design
+99,System Design and Architecture,Level 9, Large-scale system design; Performance bottleneck analysis; Reliability engineering; Trade-off analysis at scale
+100,System Design and Architecture,Level 10, Architecture for hyperscale systems; Designing fault-tolerant global platforms; System design governance; Technology strategy and long-term evolution
+101,Computer Networking,Level 1, Basics of computer networks; Types of networks; OSI model overview; Basic networking hardware
+102,Computer Networking,Level 2, TCP/IP model; IP addressing basics; MAC addressing; Network topologies
+103,Computer Networking,Level 3, Subnetting fundamentals; Routing vs switching; Common networking protocols; DNS and DHCP basics
+104,Computer Networking,Level 4, TCP vs UDP; LAN and WAN concepts; Basic network configuration; Network troubleshooting fundamentals
+105,Computer Networking,Level 5, Routing protocols basics; Switching concepts; VLANs; Network security fundamentals
+106,Computer Networking,Level 6, Advanced routing concepts; NAT and firewall configuration; Wireless networking; Network performance analysis
+107,Computer Networking,Level 7, Network design principles; High availability networking; Load balancing concepts; Network monitoring tools
+108,Computer Networking,Level 8, Enterprise network architecture; Network virtualization; Software-defined networking basics; Advanced security practices
+109,Computer Networking,Level 9, Large-scale network design; Traffic engineering; Network automation; Performance optimization and reliability
+110,Computer Networking,Level 10, Network architecture strategy; Designing global-scale networks; Network security governance; Innovation in networking technologies
+111,Operating System,Level 1, Basics of operating systems; Types of operating systems; Functions of OS; User and kernel modes
+112,Operating System,Level 2, Process concepts; Threads and multithreading basics; CPU scheduling fundamentals; System calls
+113,Operating System,Level 3, Memory management basics; Paging and segmentation; File system concepts; Deadlock basics
+114,Operating System,Level 4, Process synchronization; Scheduling algorithms; Virtual memory concepts; File allocation methods
+115,Operating System,Level 5, Deadlock prevention and avoidance; Disk scheduling algorithms; I/O management; Process communication
+116,Operating System,Level 6, Advanced memory management; Page replacement algorithms; File system implementation; Concurrency control
+117,Operating System,Level 7, Operating system performance tuning; Multithreaded and multicore systems; OS security fundamentals; Resource management strategies
+118,Operating System,Level 8, Distributed operating systems; Virtualization concepts; Containerization basics; OS-level monitoring and logging
+119,Operating System,Level 9, High-performance OS design; Kernel optimization; Scalability and reliability engineering; OS-level troubleshooting
+120,Operating System,Level 10, Operating system architecture design; Kernel development concepts; Building OS for large-scale systems; Innovation in OS design and performance optimization
