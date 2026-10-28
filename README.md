@@ -9,12 +9,19 @@ database schema or secret was copied from it.
 
 ## Current state
 
-Milestones **M1 — foundation and shared contract**, **M2 — document intelligence**,
-**M3 — Profile Builder and persistence**, and **M4 — Talent Check and Skill Matching** have
-local implementations. M5 integration checks and walkthrough preparation are in place. The team
-has confirmed the guide, role ownership, shared contract and demo rehearsal. Official acceptance
-still needs two human-reviewed JD/role flows using official JD samples. See
-[`docs/m5_walkthrough.md`](docs/m5_walkthrough.md) for evidence and exact next steps.
+All five modules and the Evidence Ledger frontend are implemented. The offline official-sample
+mock evaluator passes 6/6 JD and 4/4 resume extraction checks. Flow 1 and Flow 2 were also run
+through the configured external route with per-file consent. Both produced evidence-backed skills,
+but neither JD had a confirmed required skill, so Skill Match correctly returned no score. Review
+the displayed evidence and requirement labels before claiming an official match result.
+
+Supabase now uses normal email/password sign-in and account creation. Document analysis works
+before sign-in; cloud profile save/load requires a confirmed account. The project allows email
+sign-up and requires confirmation. No account was created for the audit, so cloud save/reload and
+two-owner RLS remain unverified. The original official company JSON is still missing; the app marks
+the CSV-derived company snapshot as provisional. See [`docs/m5_walkthrough.md`](docs/m5_walkthrough.md)
+for evidence and remaining actions, and [`docs/REDESIGN_REPORT.md`](docs/REDESIGN_REPORT.md) for
+the Evidence Ledger implementation results.
 
 - independent FastAPI backend and React/Vite/TypeScript frontend, both runnable;
 - versioned Pydantic v2 contract (`backend/app/contracts/v1.py`) plus a flat provider DTO;
@@ -45,8 +52,9 @@ still needs two human-reviewed JD/role flows using official JD samples. See
 `GET /api/v1/health` reports the implemented modules as `ready`. Official-sample parsing currently
 meets the local mock thresholds (6/6 JDs and 4/4 resumes). The mock conservatively leaves
 ambiguous JD requirements unconfirmed; use the visible evidence review to classify them locally.
-Two official JD/role flows still need to be scored and recorded. Synthetic fixtures are a demo
-fallback, not official acceptance data.
+Two official JD/role flows have been exercised and recorded as Flow 1 and Flow 2. Their results
+need human requirement review before either can produce an official Skill Match score. Synthetic
+fixtures are a demo fallback, not official acceptance data.
 The local `prd.md` and `implementation_plan.md` hold planning details and are intentionally
 excluded from Git.
 
@@ -63,17 +71,19 @@ references/  Source PDFs and the checklist workbook (local only)
 Python 3.12+ and Node 20+ are required.
 
 ```powershell
-# Backend, from backend/
+# Backend first-time setup, from backend/
 uv venv
 uv pip install -e ".[dev]"
+# Normal start after setup. Provider settings are loaded from the ignored backend/.env.
 uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000/docs
 uv run pytest
 uv run ruff check .
 uv run python scripts/evaluate_document_samples.py # Local offline acceptance check
 uv run python scripts/evaluate_synthetic_demo.py   # Two-role offline demo score check
 
-# Frontend, from frontend/
+# Frontend first-time setup, from frontend/
 npm install
+# Normal start after setup. Browser-safe Supabase settings are in ignored frontend/.env.local.
 npm run dev                               # http://localhost:5173, proxies /api to the backend
 npm test
 npm run typecheck
@@ -134,7 +144,7 @@ parser element ids; the backend attaches locations and builds the domain objects
   are never exposed through `VITE_*` variables.
 - `LLM_PROVIDER=mock` is the no-credential default. It performs deterministic local registry-term
   extraction and makes no network calls; it is useful for offline demos, not a substitute for a
-  live model's broader extraction ability.
+  live model's broader extraction ability. No local LLM or Ollama setup is part of this app.
 - `LLM_PROVIDER=fallback` optionally tries the comma-separated OpenRouter models in
   `LLM_OPENROUTER_FALLBACK_MODELS`, then `LLM_GROQ_FALLBACK_MODEL`. Each model gets one attempt;
   the next is used only after a provider error, invalid structured output, or a fallback response
@@ -156,6 +166,9 @@ parser element ids; the backend attaches locations and builds the domain objects
   requires a separate user consent checkbox. Names, email addresses and phone patterns are
   redacted locally before resume requests. Evidence is checked against the original parser
   elements, which remain in memory only for that request.
+- In this workspace, the ignored backend configuration has the external-processing gates enabled
+  for the two authorized official flows. This local setting is not committed; a fresh environment
+  remains blocked until its administrator reviews the route. Per-file consent still applies.
 - Provider adapters use no tools or database access and do not log document content. A fallback
   route logs only provider/model identifiers and safe error codes. Direct provider mode allows at
   most one bounded structural retry; waterfall mode tries each configured route entry once.
@@ -194,7 +207,7 @@ supabase test db
 supabase stop
 ```
 
-The SQL test covers two anonymous owners and an unauthenticated `anon` role. This optional local
+The SQL test covers two distinct owner identities and an unauthenticated `anon` role. This optional local
 test has not run in this workspace.
 
 ## Local planning files

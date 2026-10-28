@@ -46,6 +46,25 @@ fresh empty state. Automated checks on the final build:
 
 Screenshots were captured to a temporary directory and are not committed.
 
+## Post-redesign integration audit
+
+The follow-up product audit changed Supabase access from anonymous sessions to ordinary
+email/password sign-in and account creation. The account panel sits in Stage 02; document analysis
+remains usable before sign-in, while saving a profile requires a confirmed account. The connected
+project reports email sign-up enabled and email confirmation required. The account flow was checked
+in the headless browser, but no real account was created or used, so cloud persistence and hosted
+two-owner RLS remain unverified.
+
+Offline official-pack parsing with the local mock provider passed 6/6 JDs and 4/4 resumes. The two
+authorized external flows are recorded as Flow 1 and Flow 2. Both returned evidence-backed results,
+but neither JD had a confirmed required skill and neither produced a Skill Match score. A human
+reviewer must confirm requirement labels only where the displayed evidence supports them. The
+original official company JSON is still unavailable; the app shows the CSV-derived snapshot as
+provisional.
+
+The current branch verification passes 38 frontend tests, frontend typecheck and production build.
+Backend tests and Ruff pass. Generated frontend types match the current backend OpenAPI schema.
+
 ## Residual gaps
 
 - No frontend linter is configured; `tsc --noEmit` is the static check.
@@ -53,3 +72,6 @@ Screenshots were captured to a temporary directory and are not committed.
 - A loaded profile is long by nature (27 editable rows). Collapsing notes or skills further would hide
   data entry that exists today; the stage rail is the current mitigation.
 - jsdom tests do not cover the IntersectionObserver scroll-spy; it was verified in the browser run.
+- Live Supabase save/reload, email confirmation and cross-owner RLS still need a signed-in test.
+- The two official live model outputs are not scorable until required-skill classifications are
+  reviewed against their evidence.

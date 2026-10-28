@@ -1,5 +1,9 @@
 # RADIX Talent Match — UI/UX Audit
 
+> Historical baseline: this audit describes the frontend before the Evidence Ledger redesign.
+> Resolved design findings and current residual gaps are recorded in
+> [`REDESIGN_REPORT.md`](REDESIGN_REPORT.md) and [`m5_walkthrough.md`](m5_walkthrough.md).
+
 **Date:** 2026-10-28  
 **Commit under audit:** `9daaf35` (branch `master`, before redesign branch)  
 **Scope:** `frontend/` only. Backend, API contract, scoring logic and profile storage untouched.  

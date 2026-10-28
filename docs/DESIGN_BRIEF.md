@@ -1,6 +1,6 @@
 # RADIX Talent Match — Design Brief
 
-**Status:** Approved for build (Phase 3)  
+**Status:** Implemented on `design/evidence-ledger`; see `docs/REDESIGN_REPORT.md` for measured results.
 **Author:** Design lead  
 **Date:** 2026-10-28  
 **Branch:** `design/evidence-ledger`  
@@ -379,7 +379,7 @@ A **sticky-top bar at the top of the profile form** (not a bottom-sticky child, 
 Native `<details>`/`<summary>`, 44 px summary, chevron rotates 90°, no height animation. Used for level guides, processing route, company bar preview, rejected claims, JD source evidence, and optional background sections. Summary text is a real sentence with a count.
 
 ### 11.15 Auth panel
-Rendered only in Supabase mode inside Stage 02, **above the form**, because it is required to save there. A ruled block titled "Sign in to save this profile", one sentence ("You can fill everything in first; saving needs an account."), email/password fields, primary "Sign in", a text toggle to create an account, and a status/error line. On mobile it stacks above the form. It must not block analysis, and it must not claim local saving exists in Supabase mode.
+Rendered only in Supabase mode inside Stage 02, **above the form**, because it is required to save there. The current panel is titled "Save profiles to Supabase" and explains that JD/resume analysis works before sign-in. It offers email/password sign-in and account creation, with confirmation/error status. On mobile it stacks above the form. It must not block analysis or claim local saving exists in Supabase mode.
 
 ### 11.16 Appendix
 Two native disclosures at the end, not a 3-column card wall: **Reference** (the 12 skillsets with codes and names, and the company snapshots already used by the select) and **System & provenance** (module statuses, the exact milestone/contract line, data hash, provider route, privacy notes). Readable, small type, no interaction beyond disclosure. This is where build metadata and the "M3 profile builder · M4 scoring · contract…" string belong.
