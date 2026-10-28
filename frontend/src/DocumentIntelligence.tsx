@@ -421,6 +421,7 @@ export default function DocumentIntelligence({
   onJdAnalyzed?: (result: ExtractionResult | null) => void;
   onResumeAccepted?: (result: ExtractionResult) => void;
 }) {
+  const providerRoute = provider.route ?? [];
   const [mode, setMode] = useState<AnalysisMode>("jd");
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<ExtractionResult | null>(null);
@@ -479,9 +480,9 @@ export default function DocumentIntelligence({
           {provider.configured ? `Provider: ${provider.name}` : "Provider not configured"}
         </span>
       </div>
-      {provider.configured && provider.route.length > 1 && (
+      {provider.configured && providerRoute.length > 1 && (
         <p className="muted provider-route" aria-label="Provider fallback order">
-          Fallback order: {provider.route.join(" → ")}
+          Fallback order: {providerRoute.join(" → ")}
         </p>
       )}
 

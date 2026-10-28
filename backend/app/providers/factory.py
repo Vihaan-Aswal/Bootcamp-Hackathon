@@ -60,7 +60,7 @@ def _configured_credentials() -> tuple[str, str, str, str]:
 
 
 def _fallback_providers() -> tuple[Provider, ...]:
-    """Build the configured waterfall: OpenRouter models, Groq, then loopback model."""
+    """Build the configured waterfall: OpenRouter models followed by Groq."""
 
     providers: list[Provider] = []
     common = {
@@ -98,25 +98,6 @@ def _fallback_providers() -> tuple[Provider, ...]:
             )
         )
 
-    local_model = settings.llm_local_fallback_model.strip()
-    local_url = settings.llm_local_fallback_base_url.strip()
-    local_parts = urlsplit(local_url)
-    is_loopback = (
-        local_parts.scheme == "http"
-        and local_parts.hostname in {"localhost", "127.0.0.1", "::1"}
-        and bool(local_parts.netloc)
-    )
-    if local_model and is_loopback:
-        providers.append(
-            OpenAICompatibleProvider(
-                name="local",
-                api_key="",
-                base_url=local_url,
-                model=local_model,
-                strict_schema=False,
-                **common,
-            )
-        )
     return tuple(providers)
 
 

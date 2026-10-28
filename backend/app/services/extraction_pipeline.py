@@ -100,7 +100,8 @@ def run_extraction_provider(
     if not candidates:
         raise ProviderError(
             "PROVIDER_NOT_CONFIGURED",
-            "No fallback providers are configured. Add a provider key or configure a local model.",
+            "No fallback providers are configured. Configure OpenRouter or Groq, "
+            "or select mock for offline extraction.",
             status_code=503,
         )
     # These labels contain only configured provider/model identifiers and

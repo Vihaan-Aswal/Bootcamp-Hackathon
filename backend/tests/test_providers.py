@@ -142,6 +142,45 @@ def test_provider_error_does_not_expose_response_body(status_code: int) -> None:
     assert "private-key" not in str(error.value)
 
 
+def test_provider_timeout_is_sanitized_and_fallback_continues(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    private_document_text = "private resume content must not leak"
+
+    def raise_timeout(_request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout(private_document_text)
+
+    timed_out = OpenAICompatibleProvider(
+        name="openrouter",
+        model="timeout-model",
+        api_key="private-key",
+        base_url="https://api.example.test/v1",
+        transport=httpx.MockTransport(raise_timeout),
+    )
+
+    with pytest.raises(ProviderError) as error:
+        timed_out.generate_structured(_request())
+    assert error.value.code == "PROVIDER_TIMEOUT"
+    assert private_document_text not in str(error.value)
+    assert "private-key" not in str(error.value)
+
+    class WorkingProvider:
+        name = "groq"
+        model = "fallback-model"
+        supports_json_schema = True
+        external = True
+
+        def generate_structured(self, _request):
+            return '{"skills":[]}'
+
+    chosen, output = run_extraction_provider(
+        ProviderFallbackChain((timed_out, WorkingProvider())), _request()
+    )
+    assert chosen.name == "groq"
+    assert output.skills == []
+    assert private_document_text not in caplog.text
+
+
 def test_openai_compatible_local_http_allows_no_key_but_requires_safe_url() -> None:
     provider = OpenAICompatibleProvider(
         name="openai_compatible",
@@ -223,7 +262,7 @@ def test_fallback_chain_uses_next_model_when_schema_output_is_invalid() -> None:
     assert output.skills == []
 
 
-def test_fallback_factory_orders_models_before_groq_then_loopback(
+def test_fallback_factory_orders_models_before_groq(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.config import settings
@@ -238,8 +277,6 @@ def test_fallback_factory_orders_models_before_groq_then_loopback(
         "dots-studio/dots-3-note-preview:free,google/gemma-4-31b-it:free",
     )
     monkeypatch.setattr(settings, "llm_groq_fallback_model", "openai/gpt-oss-120b")
-    monkeypatch.setattr(settings, "llm_local_fallback_model", "local-test-model")
-    monkeypatch.setattr(settings, "llm_local_fallback_base_url", "http://localhost:11434/v1")
 
     chain = get_provider()
 
@@ -248,7 +285,6 @@ def test_fallback_factory_orders_models_before_groq_then_loopback(
         "openrouter/dots-studio/dots-3-note-preview:free",
         "openrouter/google/gemma-4-31b-it:free",
         "groq/openai/gpt-oss-120b",
-        "local/local-test-model",
     )
     assert chain.providers[0].supports_json_schema is True
     assert chain.providers[1].supports_json_schema is False

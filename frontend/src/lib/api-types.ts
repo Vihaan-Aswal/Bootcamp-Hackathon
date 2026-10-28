@@ -600,7 +600,7 @@ export interface components {
             /** Resume Processing Allowed */
             resume_processing_allowed: boolean;
             /** Route */
-            route: string[];
+            route?: string[];
             /** Supports Json Schema */
             supports_json_schema: boolean;
         };

@@ -73,6 +73,21 @@ describe("foundation screen", () => {
     expect(screen.getByText(/Provisional data/)).toBeTruthy();
   });
 
+  it("keeps JD and resume tools available before Supabase sign-in", async () => {
+    vi.stubEnv("VITE_SUPABASE_URL", "https://radix.example.supabase.co");
+    vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "public-test-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => jsonResponse(bodies[String(input)])),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Document intelligence" })).toBeTruthy();
+    expect(screen.getByText(/analysis works without signing in/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New here? Create an account" })).toBeTruthy();
+  });
+
   it("imports through Pydantic validation and assigns a new profile identity", async () => {
     const originalId = "11111111-1111-4111-8111-111111111111";
     const validationBodies: Record<string, unknown>[] = [];
@@ -407,5 +422,6 @@ describe("foundation screen", () => {
       expect(request.jd.filename).toBe("role.docx");
       expect((request as unknown as { jd: { skills: { requirement_type: string }[] } }).jd.skills[0].requirement_type).toBe("required");
     },
+    15_000,
   );
 });

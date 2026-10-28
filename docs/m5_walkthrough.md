@@ -6,31 +6,35 @@
 |---|---|---|
 | 15 — Modules talk to each other | Done locally | `backend/tests/test_workflow_integration.py` runs JD parsing, resume parsing, profile validation, Talent Check and Skill Match back to back through the API. |
 | 16 — One shared screen | Done in automated UI coverage | `frontend/src/App.test.tsx` runs the same screen through JD upload, resume merge, save, Talent Check and Skill Match for two candidate scenarios. |
-| 17 — Two JD/role combinations | Pending official-sample review | Official parsing meets 6/6 JD and 4/4 resume skill-extraction counts with the mock provider. Its conservative output leaves ambiguous requirements unconfirmed; review the source evidence and classify two official JDs in the local UI, then score them against reviewed profiles. The synthetic fallback proves the scoring flow, but does not count for this official checklist item. |
+| 17 — Two JD/role combinations | Partially verified in live browser flows | Flow 1 and Flow 2 used approved official JD/resume pairs. Both completed evidence review, resume merge, profile save/reload, Talent Check and Skill Match. Both JDs yielded no confirmed required skills, so Skill Match correctly returned no score. |
 | 18 — Bugs triaged | Done | See the priority list below. |
 | 19 — Walkthrough ready | Done | The six-to-seven-minute script below is ready to rehearse. |
 | 20 — Demo rehearsed | Done by team confirmation | The team confirmed the demo rehearsal is complete. |
 
-The team confirmed items 1, 2, 3 and 20. Item 17 remains open until two official JD/role flows are
-reviewed and scored. No live model or resume text was sent externally during this run. The separate
-Supabase project is not connected, so hosted persistence and RLS isolation remain unverified.
+The team confirmed items 1, 2, 3 and 20. Flow 1 and Flow 2 completed the official browser flow using
+the configured external route after per-file consent. Their evidence and source locations were
+present; Skill Match had no confirmed required skills and returned no score. Profiles were saved
+and reloaded in browser storage for this check. Supabase email/password sign-in, self-service
+sign-up, cloud persistence, and hosted RLS remain unverified because no account was used; no account
+was created. The live Auth settings report email/password auth and sign-up enabled, with email
+confirmation required.
 
 ## Triage
 
 | Priority | Finding | Disposition |
 |---|---|---|
-| P1 | The default mock provider leaves ambiguous official JD requirement types unconfirmed, so the automatic evaluator cannot score official roles by itself. | Review each skill's source evidence in the local UI and set the appropriate requirement type. Score at least two official JD/role flows; do not present synthetic scores as official results. |
-| P1 | Cloud persistence and two-owner RLS isolation are not verified against a live project. | Create a separate RADIX Talent Match Supabase project, enable anonymous Auth, apply the app migration, and verify isolation in two browser sessions. This hosted check does not require Docker. |
+| P1 | Flow 1 and Flow 2 had no confirmed required skills in the provider output, so Skill Match returned no score. | A human reviewer can classify a requirement as required only when its source evidence supports that label. Do not invent a score or present synthetic scores as official results. |
+| P1 | Cloud persistence and two-owner RLS isolation are not verified against a live project. | Create or sign into an authorized account in the app, confirm email if prompted, apply the app migration if needed, and verify isolation in two browser sessions. This hosted check does not require Docker. |
 | P2 | Scanned PDFs do not have OCR. | Keep the explicit `OCR_REQUIRED` state and use text PDFs or DOCX in the walkthrough. |
 | P2 | The original official company skillset JSON was not supplied. | Use the provisional CSV-derived three-company snapshot and keep its source warning visible. Reconcile only if the official JSON is recovered. |
-| P2 | Live-provider extraction quality and current vendor terms were not checked. | Use `LLM_PROVIDER=mock` for offline work. Review provider terms before enabling external processing; both JD and resume uploads require per-file consent. |
+| P2 | The external route was exercised, but human quality review and the Groq account's retention setting remain outside this automated run. | The route enforces OpenRouter's per-request ZDR and data-collection restrictions. Groq may temporarily log inference content for reliability or abuse unless account-level ZDR is enabled. Keep per-file consent enabled. |
 | P3 | Local checklist still records team-confirmed guide, role, contract and rehearsal items as pending. | Update the local checklist tracker to reflect the team's confirmation before sharing it. |
 
 The follow-up audit found and covered two flow gaps with regression tests: reviewed resume
-suggestions now merge into the shared Profile Builder draft, and external JD processing now needs
-both an administrator terms-review setting and per-upload user consent. The UI also lets a reviewer
-classify JD requirements from the displayed evidence. Automated checks cover these paths; official
-two-role scoring and live Supabase isolation remain unverified.
+suggestions now merge into the shared Profile Builder draft, and external JD processing needs both
+an administrator setting and per-upload user consent. The UI also lets a reviewer classify JD
+requirements from displayed evidence. Two official flows passed through the configured provider
+route; live Supabase persistence and cross-owner RLS remain unverified.
 
 ## Six-to-seven-minute walkthrough
 
@@ -73,19 +77,19 @@ outcomes only. Do not count the synthetic walkthrough as item 17.
    a test profile manually or parse an official resume locally with the mock provider, then fill 12
    self-reported ratings. Save the profile, run Talent Check and Skill Match for both roles, and
    record aggregate outcomes without copying sample contents into logs or notes.
-2. **Optional external provider:** only if broader extraction is needed, review the current terms
-   for all five OpenRouter models, Groq and any local server before using this route. Put
+2. **External provider:** review the current terms
+   for all five OpenRouter models and Groq before using this route. Put
    `OPENROUTER_API_KEY` and `GROQ_API_KEY` in `backend/.env`, set `LLM_PROVIDER=fallback`, and keep
-   the ordered model list in `LLM_OPENROUTER_FALLBACK_MODELS`. A local final fallback requires an
-   installed, running OpenAI-compatible model server and `LLM_LOCAL_FALLBACK_MODEL`. Keep keys out
-   of all `VITE_*` settings. Set `LLM_JD_PROCESSING_ALLOWED=true` and/or
+   the ordered model list in `LLM_OPENROUTER_FALLBACK_MODELS`. This route ends after Groq; offline
+   extraction uses the no-network mock provider. Keep keys out of all `VITE_*` settings. Set
+   `LLM_JD_PROCESSING_ALLOWED=true` and/or
    `LLM_RESUME_PROCESSING_ALLOWED=true` only after terms review; each external upload also requires
-   the user's per-file consent in the UI. Do not send supplied documents externally for this run.
-3. **Separate Supabase setup:** create a separate project for RADIX Talent Match. In its Dashboard,
-   open **Authentication → Providers** and enable anonymous sign-ins as described in the
-   [Supabase anonymous sign-ins guide](https://supabase.com/docs/guides/auth/auth-anonymous).
-   Anonymous Auth users access rows as the Postgres `authenticated` role, with ownership enforced
-   by the profile table's `auth.uid()` RLS policies. Apply
+   the user's per-file consent in the UI. Flow 1 and Flow 2 were sent through the route under the
+   user's authorization; do not send any other supplied samples externally.
+3. **Separate Supabase setup:** create a separate project for RADIX Talent Match. Enable
+   email/password Auth, then sign in or use the app's create-account option and confirm email if
+   prompted. Signed-in users access rows as the Postgres `authenticated` role, with ownership
+   enforced by the profile table's `auth.uid()` RLS policies. Apply
    `supabase/migrations/20261028090000_rtm_candidate_profiles.sql` in that project's SQL Editor.
    Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `frontend/.env.local`, restart
    Vite, and verify save/load in two independent browser sessions.

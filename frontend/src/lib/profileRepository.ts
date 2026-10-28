@@ -11,12 +11,56 @@ export interface ProfileRepository {
   loadAll(): Promise<CandidateProfile[]>;
   save(profile: CandidateProfile): Promise<CandidateProfile>;
   delete(profileId: string): Promise<void>;
+  signIn?(email: string, password: string): Promise<CandidateProfile[]>;
+  signUp?(email: string, password: string): Promise<{
+    authenticated: boolean;
+    profiles: CandidateProfile[];
+  }>;
+  signOut?(): Promise<void>;
 }
 
 export type ProfileValidator = (value: unknown) => Promise<CandidateProfile>;
 
 const LOCAL_STORAGE_KEY = "radix-talent-match:profiles:v1";
 const SUPABASE_TABLE = "rtm_candidate_profiles";
+
+function createConfiguredSupabaseClient(url: string, publishableKey: string) {
+  return createClient(url, publishableKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
+let sharedSupabaseClient: {
+  url: string;
+  publishableKey: string;
+  client: ReturnType<typeof createConfiguredSupabaseClient>;
+} | null = null;
+
+function getSupabaseClient(url: string, publishableKey: string) {
+  if (
+    !sharedSupabaseClient ||
+    sharedSupabaseClient.url !== url ||
+    sharedSupabaseClient.publishableKey !== publishableKey
+  ) {
+    sharedSupabaseClient = {
+      url,
+      publishableKey,
+      client: createConfiguredSupabaseClient(url, publishableKey),
+    };
+  }
+  return sharedSupabaseClient.client;
+}
+
+export class ProfileAuthenticationRequiredError extends Error {
+  constructor() {
+    super("Sign in to a Supabase account or create one to access cloud profiles.");
+    this.name = "ProfileAuthenticationRequiredError";
+  }
+}
 
 type SupabaseProfileRow = {
   profile_id: string;
@@ -144,7 +188,7 @@ function createConfigurationErrorRepository(message: string): ProfileRepository 
 
 function supabaseError(operation: string, error: { message: string }): Error {
   return new Error(
-    `Could not ${operation} in Supabase. Check the project connection, anonymous Auth setting, and profile-table RLS policies. ${error.message}`,
+    `Could not ${operation} in Supabase. Check the project connection and profile-table RLS policies. ${error.message}`,
   );
 }
 
@@ -153,32 +197,17 @@ function createSupabaseRepository(
   url: string,
   publishableKey: string,
 ): ProfileRepository {
-  const supabase = createClient(url, publishableKey, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false,
-    },
-  });
+  const supabase = getSupabaseClient(url, publishableKey);
 
   let identityPromise: Promise<string> | null = null;
   const getOwnerId = (): Promise<string> => {
     if (!identityPromise) {
       identityPromise = (async () => {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw supabaseError("load the anonymous session", sessionError);
-        if (sessionData.session?.user.id) return sessionData.session.user.id;
-
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (error) {
-          throw new Error(
-            `Could not start an anonymous Supabase session. Enable anonymous sign-ins in the separate RADIX project. ${error.message}`,
-          );
-        }
-        if (!data.user?.id) {
-          throw new Error("Supabase did not return an anonymous user ID.");
-        }
-        return data.user.id;
+        if (sessionError) throw supabaseError("load the session", sessionError);
+        const user = sessionData.session?.user;
+        if (!user?.id || user.is_anonymous) throw new ProfileAuthenticationRequiredError();
+        return user.id;
       })().catch((error: unknown) => {
         identityPromise = null;
         throw error;
@@ -200,6 +229,38 @@ function createSupabaseRepository(
 
       const rows = (data ?? []) as unknown as Pick<SupabaseProfileRow, "profile">[];
       return Promise.all(rows.map((row) => validate(row.profile)));
+    },
+
+    async signIn(email, password) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw supabaseError("sign in", error);
+      if (!data.user?.id || data.user.is_anonymous) {
+        throw new Error("Supabase did not return a signed-in account.");
+      }
+      identityPromise = Promise.resolve(data.user.id);
+      return this.loadAll();
+    },
+
+    async signUp(email, password) {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw supabaseError("create account", error);
+      if (data.session && data.user?.id && !data.user.is_anonymous) {
+        identityPromise = Promise.resolve(data.user.id);
+        return { authenticated: true, profiles: await this.loadAll() };
+      }
+      return { authenticated: false, profiles: [] };
+    },
+
+    async signOut() {
+      const { error } = await supabase.auth.signOut();
+      identityPromise = null;
+      if (error) throw supabaseError("sign out", error);
     },
 
     async save(profile) {

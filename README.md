@@ -136,19 +136,20 @@ parser element ids; the backend attaches locations and builds the domain objects
   extraction and makes no network calls; it is useful for offline demos, not a substitute for a
   live model's broader extraction ability.
 - `LLM_PROVIDER=fallback` optionally tries the comma-separated OpenRouter models in
-  `LLM_OPENROUTER_FALLBACK_MODELS`, then `LLM_GROQ_FALLBACK_MODEL`, then the configured loopback
-  model in `LLM_LOCAL_FALLBACK_MODEL`. Each model gets one attempt; the next is used only after a
-  provider error, invalid structured output, or a fallback response whose claims all fail local
-  evidence verification. Partial evidence failures remain visible in the review result. This does
-  not detect every semantically poor extraction.
+  `LLM_OPENROUTER_FALLBACK_MODELS`, then `LLM_GROQ_FALLBACK_MODEL`. Each model gets one attempt;
+  the next is used only after a provider error, invalid structured output, or a fallback response
+  whose claims all fail local evidence verification. Partial evidence failures remain visible in
+  the review result. This does not detect every semantically poor extraction.
 - The fallback route is shown in the upload screen. Review the terms for every external endpoint
   before enabling either external-processing flag. OpenRouter requests disable upstream provider
   fallback and require a no-training, zero-data-retention endpoint. Models with documented JSON
   Schema support use strict mode; other configured models use JSON-object mode and are validated
-  locally. Incompatible free endpoints are skipped. The route can therefore fall through to Groq
-  or local when no eligible OpenRouter endpoint is available. Groq's hosted GPT-OSS model may incur
-  charges beyond account-specific free limits; set provider spending limits. A local fallback
-  requires an already-running OpenAI-compatible server such as Ollama; Docker is not required.
+  locally. Incompatible free endpoints are skipped, so the route falls through to Groq when no
+  eligible OpenRouter endpoint is available. Groq's hosted GPT-OSS model may incur charges beyond
+  account-specific free limits; set provider spending limits. Groq may temporarily log inference
+  inputs and outputs for reliability or abuse investigation for up to 30 days unless Zero Data
+  Retention is enabled in its account settings. Offline extraction remains available through the
+  no-network `mock` provider.
 - External JD and resume processing are blocked by default. After checking the current retention
   and training terms for every provider in the configured route, an administrator may separately set
   `LLM_JD_PROCESSING_ALLOWED=true` and/or `LLM_RESUME_PROCESSING_ALLOWED=true`; each upload still
@@ -168,17 +169,20 @@ parser element ids; the backend attaches locations and builds the domain objects
 ## Profile storage
 
 With both Supabase values empty, profiles stay in this browser's local storage. Use the profile
-JSON export for a portable backup. When both values are configured, the browser starts a persistent
-anonymous Auth session and stores profile JSON in `public.rtm_candidate_profiles`; RLS scopes every
-operation to `auth.uid()`. A configured Supabase error is shown to the user and does not silently
+JSON export for a portable backup. When both values are configured, sign in or create a
+Supabase email/password account to store profile JSON in `public.rtm_candidate_profiles`; RLS scopes
+every operation to `auth.uid()`. If email confirmation is required, confirm from your inbox before
+signing in. JD/resume analysis remains available before sign-in; only cloud profile storage needs
+an authenticated account. A configured Supabase error is shown to the user and does not silently
 fall back to local storage.
 
 To enable cloud storage, create a **separate Supabase project for RADIX Talent Match**, enable
-anonymous sign-ins in its Auth settings, and apply
+email/password sign-in in its Auth settings, and apply
 `supabase/migrations/20261028090000_rtm_candidate_profiles.sql` through that project's SQL Editor.
-Put its project URL and publishable key in `frontend/.env.local` as
+Sign in with an existing authorized account. Put the project URL and publishable key in
+`frontend/.env.local` as
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, then restart Vite. Never add a service-role
-key to the frontend. The project has not been linked to a live Supabase account in this workspace.
+key to the frontend.
 
 Hosted Supabase setup and verification do not require Docker. After configuring the project above,
 verify persistence and ownership in two independent browser sessions. The repository also has an

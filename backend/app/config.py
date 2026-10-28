@@ -40,8 +40,6 @@ class Settings(BaseSettings):
         "recursive/flint-v1.0:free"
     )
     llm_groq_fallback_model: str = "openai/gpt-oss-120b"
-    llm_local_fallback_base_url: str = "http://localhost:11434/v1"
-    llm_local_fallback_model: str = ""
     openrouter_api_key: str = ""
     groq_api_key: str = ""
     google_api_key: str = ""

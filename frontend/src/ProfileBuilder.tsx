@@ -230,6 +230,7 @@ export default function ProfileBuilder({
   provider,
   storageMode,
 }: Props) {
+  const providerRoute = provider.route ?? [];
   const profilesRef = useRef(profiles);
   profilesRef.current = profiles;
   const selectedProfile = profiles.find((profile) => profile.profile_id === selectedProfileId);
@@ -486,7 +487,7 @@ export default function ProfileBuilder({
 
       <p className="profile-storage-note" role="note">
         {storageMode === "supabase"
-          ? "Profiles are saved to your anonymous Supabase session and protected by row-level ownership rules. Keep an exported JSON backup if you need to move devices."
+          ? "Profiles are saved to your signed-in Supabase account and protected by row-level ownership rules. Keep an exported JSON backup if you need to move devices."
           : storageMode === "local"
             ? "Supabase is not configured, so profiles are saved in this browser only. Export JSON to keep a portable backup."
             : "Supabase storage is only partly configured. Complete both project values; saves are unavailable until then and will not fall back to this browser."}
@@ -564,9 +565,9 @@ export default function ProfileBuilder({
             <p className="notice" role="note">External resume processing is blocked. An administrator must review the current terms for every provider in this route before enabling it.</p>
           ) : provider.external ? (
             <>
-              {provider.route.length > 1 && (
+              {providerRoute.length > 1 && (
                 <p className="muted provider-route" aria-label="Provider fallback order">
-                  Fallback order: {provider.route.join(" → ")}
+                  Fallback order: {providerRoute.join(" → ")}
                 </p>
               )}
             <label className="checkbox-row">

@@ -29,6 +29,8 @@ def test_health_reports_the_contract_and_data_state(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(settings, "llm_provider", "mock")
+    monkeypatch.setattr(settings, "llm_jd_processing_allowed", False)
+    monkeypatch.setattr(settings, "llm_resume_processing_allowed", False)
     payload = client.get("/api/v1/health").json()
 
     assert payload["status"] == "ok"

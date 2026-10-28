@@ -16,6 +16,13 @@ body {
   padding: 2.5rem 1.25rem 4rem;
 }
 
+.app > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
 h1 {
   margin: 0;
   font-size: 1.9rem;
@@ -36,6 +43,54 @@ section {
 .subtitle,
 .muted {
   color: #5c5c56;
+}
+
+.auth-panel {
+  max-width: 30rem;
+  padding: 1.25rem;
+  background: #fff;
+  border: 1px solid #deded6;
+  border-radius: 0.75rem;
+}
+
+.auth-panel h2 {
+  margin-bottom: 0.5rem;
+}
+
+.auth-panel > p {
+  margin: 0 0 1rem;
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.auth-form button {
+  justify-self: start;
+  border-color: #2b3025;
+  background: #2b3025;
+  color: #fff;
+}
+
+.auth-mode-toggle {
+  margin-top: 0.75rem;
+}
+
+.cloud-auth-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: #f1f1eb;
+  border: 1px solid #deded6;
+  border-radius: 0.75rem;
+}
+
+.cloud-auth-prompt .auth-panel {
+  flex: 1 1 28rem;
+  margin-top: 0;
 }
 
 .muted {
