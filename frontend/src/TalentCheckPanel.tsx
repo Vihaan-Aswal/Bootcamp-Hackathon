@@ -31,21 +31,40 @@ function displayResult(result: TalentCheckResult) {
       Number(right.gap) - Number(left.gap) ||
       right.gap_size - left.gap_size,
   );
+  const met = result.rows.filter((row) => row.candidate_level !== null && !row.gap).length;
+  const below = result.rows.filter((row) => row.gap).length;
+  const unrated = result.rows.filter((row) => row.candidate_level === null).length;
 
   return (
-    <div className="m4-result" aria-live="polite">
+    <div className="m4-result">
       {result.status === "incomplete" ? (
-        <p className="notice" role="status">
-          Incomplete: add self-reported ratings for {missingCategories.length} remaining
-          skillset{missingCategories.length === 1 ? "" : "s"}. No readiness score is shown.
-        </p>
+        <div className="score-withheld">
+          <p className="notice" role="status">
+            Incomplete: add self-reported ratings for {missingCategories.length} remaining
+            skillset{missingCategories.length === 1 ? "" : "s"}. No readiness score is shown.
+          </p>
+          <p className="score-arithmetic">
+            <span>{met} at or above bar</span>
+            <span>{below} below</span>
+            <span>{unrated} not rated</span>
+          </p>
+          <CoverageMeter rows={result.rows} />
+        </div>
       ) : (
-        <p className="readiness-score" role="status">
-          Self-reported readiness indicator: <strong>{result.readiness_score}%</strong>
-        </p>
+        <div className="score-stamp">
+          <p className="score-arithmetic">
+            <span>{met} at or above bar</span>
+            <span>{below} below</span>
+            <span>{unrated} not rated</span>
+          </p>
+          <p className="readiness-score" role="status">
+            Self-reported readiness indicator: <strong>{result.readiness_score}%</strong>
+          </p>
+          <CoverageMeter rows={result.rows} />
+        </div>
       )}
 
-      <p className="muted">
+      <p className="method-note">
         Equal-weighted coverage, capped at each company requirement. Ratings describe candidate
         self-reports; this score is not a hiring outcome or a ready/not-ready decision.
       </p>
@@ -53,6 +72,7 @@ function displayResult(result: TalentCheckResult) {
       <h3>Skillset gaps</h3>
       <div className="table-scroll">
         <table className="m4-table">
+          <caption className="visually-hidden">Company requirement and self-reported level for each skillset</caption>
           <thead>
             <tr>
               <th scope="col">Skillset</th>
@@ -65,24 +85,43 @@ function displayResult(result: TalentCheckResult) {
           <tbody>
             {orderedRows.map((row) => (
               <tr key={row.category_code} className={row.gap ? "gap-row" : undefined}>
-                <th scope="row">
+                <th scope="row" data-label="Skillset">
                   <span>{row.category_name}</span> <code>{row.category_code}</code>
                 </th>
-                <td>{row.required_level}</td>
-                <td>{row.candidate_level ?? "Not rated"}</td>
-                <td>
+                <td data-label="Company level">{row.required_level}</td>
+                <td data-label="Self-reported">{row.candidate_level ?? "Not rated"}</td>
+                <td data-label="Gap">
                   {row.candidate_level === null
                     ? "Not assessed"
                     : row.gap
                       ? `${row.gap_size} level${row.gap_size === 1 ? "" : "s"} below`
                       : "Meets or exceeds"}
                 </td>
-                <td>{row.bloom_code ?? "—"}</td>
+                <td data-label="Bloom context">{row.bloom_code ?? "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function CoverageMeter({ rows }: { rows: TalentCheckResult["rows"] }) {
+  return (
+    <div className="coverage-meter" aria-hidden="true">
+      {rows.map((row) => (
+        <span
+          key={row.category_code}
+          className={
+            row.candidate_level === null
+              ? "is-unrated"
+              : row.gap
+                ? "is-below"
+                : "is-met"
+          }
+        />
+      ))}
     </div>
   );
 }
@@ -154,9 +193,9 @@ export default function TalentCheckPanel({
       <div className="section-heading">
         <div>
           <h2 id="talent-check-title">Talent Check</h2>
-          <p className="muted">Compare saved self-reported ratings with one company's 12-skillset bar.</p>
+          <p className="section-purpose">Compare saved self-reported ratings with one company's 12-skillset bar.</p>
         </div>
-        <span className="badge badge-ready">M4</span>
+        <span className="status status-info">M4 scoring</span>
       </div>
 
       {companies.source_status === "provisional_csv_fallback" && (
@@ -204,7 +243,7 @@ export default function TalentCheckPanel({
       </form>
 
       {profiles.length === 0 && (
-        <p className="muted">Create and save a profile in Profile Builder before running a check.</p>
+        <p className="empty-state">Create and save a profile in Profile Builder before running a check.</p>
       )}
       {companyBar && (
         <details className="company-bar-preview">

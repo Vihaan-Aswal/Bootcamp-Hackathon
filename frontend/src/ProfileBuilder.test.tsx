@@ -255,6 +255,23 @@ describe("Profile Builder", () => {
     expect(onParseResume).toHaveBeenCalledTimes(1);
   });
 
+  it("marks unsaved edits and blocks saving until Supabase sign-in", async () => {
+    const { onSave } = renderBuilder({
+      storageMode: "supabase",
+      saveBlockedReason: "Sign in above to save to Supabase.",
+    });
+
+    expect(screen.getByText("No unsaved changes")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Ada Lovelace" } });
+    expect(screen.getByText("Unsaved changes")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save profile" })).toHaveProperty("disabled", true);
+    expect(screen.getByText("Sign in above to save to Supabase.")).toBeTruthy();
+
+    fireEvent.submit(screen.getByLabelText("Full name").closest("form")!);
+    expect((await screen.findByRole("alert")).textContent).toContain("Sign in above to save");
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it("loads an existing profile and deletes the selected profile", async () => {
     const first = profile("44444444-4444-4444-8444-444444444444");
     const second = profile("55555555-5555-4555-8555-555555555555", {
@@ -267,6 +284,7 @@ describe("Profile Builder", () => {
     rerender(<ProfileBuilder {...props} selectedProfileId={second.profile_id!} />);
     await waitFor(() => expect(screen.getByLabelText("Full name")).toHaveProperty("value", "Katherine Johnson"));
     fireEvent.click(screen.getByRole("button", { name: "Delete profile" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith(second.profile_id));
     expect(onSelect).toHaveBeenCalledWith(null);
   });

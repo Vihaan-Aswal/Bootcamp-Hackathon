@@ -35,6 +35,7 @@ type Props = {
   categories: SkillCategoryListResponse;
   provider: HealthResponse["provider"];
   storageMode: "local" | "supabase" | "unavailable";
+  saveBlockedReason?: string | null;
 };
 
 function makeId(): string {
@@ -229,12 +230,14 @@ export default function ProfileBuilder({
   categories,
   provider,
   storageMode,
+  saveBlockedReason = null,
 }: Props) {
   const providerRoute = provider.route ?? [];
   const profilesRef = useRef(profiles);
   profilesRef.current = profiles;
   const selectedProfile = profiles.find((profile) => profile.profile_id === selectedProfileId);
   const [draft, setDraft] = useState<EditableProfile>(() => selectedProfile ?? blankProfile());
+  const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [parseBusy, setParseBusy] = useState(false);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -242,6 +245,7 @@ export default function ProfileBuilder({
   const [externalConsent, setExternalConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const appliedReview = useRef<ExtractionResult | null>(null);
 
   useEffect(() => {
@@ -249,9 +253,11 @@ export default function ProfileBuilder({
       ? profilesRef.current.find((item) => item.profile_id === selectedProfileId)
       : undefined;
     setDraft(profile ?? blankProfile());
+    setDirty(false);
     setError(null);
     setMessage(null);
     setResumeFile(null);
+    setConfirmingDelete(false);
     if (resumeInput.current) resumeInput.current.value = "";
     setExternalConsent(false);
   }, [selectedProfileId]);
@@ -265,22 +271,27 @@ export default function ProfileBuilder({
 
     appliedReview.current = reviewedResumeSuggestions;
     setDraft((current) => mergeResumeSuggestions(current, reviewedResumeSuggestions));
+    setDirty(true);
     setError(null);
     setMessage("Accepted resume suggestions merged. Review the profile and save your changes.");
   }, [reviewedResumeSuggestions]);
 
   const rateableCategories = categories.categories.filter((category) => category.code !== "OTHER");
+  const ratedCount = draft.skillset_levels?.length ?? 0;
   const updateDraft = (change: (profile: EditableProfile) => EditableProfile) => {
     setDraft((current) => change(current));
+    setDirty(true);
     setError(null);
     setMessage(null);
   };
 
   function startNewProfile() {
     setDraft(blankProfile());
+    setDirty(false);
     setResumeFile(null);
     if (resumeInput.current) resumeInput.current.value = "";
     setExternalConsent(false);
+    setConfirmingDelete(false);
     setError(null);
     setMessage(null);
     onSelect(null);
@@ -299,12 +310,17 @@ export default function ProfileBuilder({
         : existing.filter((rating) => rating.category_code !== category.code);
       return { ...profile, skillset_levels: next };
     });
+    setDirty(true);
     setError(null);
     setMessage(null);
   }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saveBlockedReason) {
+      setError(saveBlockedReason);
+      return;
+    }
     const name = draft.basic_details.full_name.trim();
     const email = draft.basic_details.email.trim();
     if (!name) {
@@ -348,6 +364,7 @@ export default function ProfileBuilder({
       const nextProfile = persisted ?? saved;
       onSelect(nextProfile.profile_id ?? null);
       setDraft(nextProfile);
+      setDirty(false);
       setMessage("Profile saved.");
     } catch (reason) {
       setError(errorMessage(reason));
@@ -365,7 +382,9 @@ export default function ProfileBuilder({
       await onDelete(selectedProfileId);
       onSelect(null);
       setDraft(blankProfile());
+      setDirty(false);
       setResumeFile(null);
+      setConfirmingDelete(false);
       if (resumeInput.current) resumeInput.current.value = "";
       setExternalConsent(false);
       setMessage("Profile deleted.");
@@ -385,6 +404,7 @@ export default function ProfileBuilder({
       const imported = await onImport(await file.text());
       onSelect(imported.profile_id ?? null);
       setDraft(imported);
+      setDirty(false);
       setMessage("Profile imported and saved.");
     } catch (reason) {
       setError(`Could not import profile: ${errorMessage(reason)}`);
@@ -406,6 +426,7 @@ export default function ProfileBuilder({
         throw new Error("The parser returned a job description result instead of resume suggestions.");
       }
       setDraft((profile) => mergeResumeSuggestions(profile, extraction));
+      setDirty(true);
       setMessage("Resume suggestions merged. Review every item before saving.");
     } catch (reason) {
       setError(errorMessage(reason));
@@ -427,7 +448,7 @@ export default function ProfileBuilder({
           <h2 id="profile-builder-heading">Profile Builder</h2>
           <p className="muted">Edit your profile and your own self-reported skillset ratings.</p>
         </div>
-        <span className={`profile-storage-badge profile-storage-${storageMode}`}>
+        <span className={`status profile-storage-${storageMode}`}>
           {storageMode === "supabase"
             ? "Private Supabase storage"
             : storageMode === "local"
@@ -436,8 +457,16 @@ export default function ProfileBuilder({
         </span>
       </div>
 
+      <p className="profile-storage-note" role="note">
+        {storageMode === "supabase"
+          ? "Profiles are saved to your signed-in Supabase account and protected by row-level ownership rules. Keep an exported JSON backup if you need to move devices."
+          : storageMode === "local"
+            ? "Supabase is not configured, so profiles are saved in this browser only. Export JSON to keep a portable backup."
+            : "Supabase storage is only partly configured. Complete both project values; saves are unavailable until then and will not fall back to this browser."}
+      </p>
+
       <div className="profile-toolbar">
-        <label className="profile-field">
+        <label className="profile-field profile-profile-select">
           <span>Saved profile</span>
           <select
             aria-label="Saved profile"
@@ -453,50 +482,65 @@ export default function ProfileBuilder({
             })}
           </select>
         </label>
-        <button type="button" onClick={startNewProfile} disabled={busy || parseBusy}>
-          New profile
-        </button>
-        <label className="profile-import-control">
-          Import JSON
-          <input
-            aria-label="Import profile JSON"
-            type="file"
-            accept=".json,application/json"
-            disabled={busy || parseBusy}
-            onChange={(event) => {
-              void importProfile(event.target.files?.[0]);
-              event.currentTarget.value = "";
-            }}
-          />
-        </label>
-        {draft.profile_id && (
-          <button
-            type="button"
-            onClick={() => exportCandidateProfile(draft)}
-            disabled={busy || parseBusy}
-          >
-            Export JSON
+        <div className="profile-toolbar-actions">
+          <button type="button" onClick={startNewProfile} disabled={busy || parseBusy}>
+            New profile
           </button>
-        )}
-        {selectedProfileId && (
-          <button type="button" className="profile-delete-button" onClick={() => void removeProfile()} disabled={busy || parseBusy}>
-            Delete profile
-          </button>
+          <label className="profile-import-control">
+            Import JSON
+            <input
+              aria-label="Import profile JSON"
+              type="file"
+              accept=".json,application/json"
+              disabled={busy || parseBusy}
+              onChange={(event) => {
+                void importProfile(event.target.files?.[0]);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+          {draft.profile_id && (
+            <button
+              type="button"
+              onClick={() => exportCandidateProfile(draft)}
+              disabled={busy || parseBusy}
+            >
+              Export JSON
+            </button>
+          )}
+          {selectedProfileId && !confirmingDelete && (
+            <button type="button" className="profile-delete-button" onClick={() => setConfirmingDelete(true)} disabled={busy || parseBusy}>
+              Delete profile
+            </button>
+          )}
+        </div>
+        {selectedProfileId && confirmingDelete && (
+          <div className="delete-confirm" role="group" aria-label="Confirm profile deletion">
+            <span>Delete this saved profile?</span>
+            <button type="button" className="button-danger" onClick={() => void removeProfile()} disabled={busy || parseBusy}>
+              Confirm delete
+            </button>
+            <button type="button" onClick={() => setConfirmingDelete(false)} disabled={busy || parseBusy}>
+              Cancel
+            </button>
+          </div>
         )}
       </div>
 
-      <p className="profile-storage-note" role="note">
-        {storageMode === "supabase"
-          ? "Profiles are saved to your signed-in Supabase account and protected by row-level ownership rules. Keep an exported JSON backup if you need to move devices."
-          : storageMode === "local"
-            ? "Supabase is not configured, so profiles are saved in this browser only. Export JSON to keep a portable backup."
-            : "Supabase storage is only partly configured. Complete both project values; saves are unavailable until then and will not fall back to this browser."}
-      </p>
-
-      {error && <p className="error" role="alert">{error}</p>}
-      {message && <p className="profile-success" role="status">{message}</p>}
-
       <form className="profile-form" onSubmit={(event) => void saveProfile(event)}>
+        <div className="profile-savebar">
+          <div className="profile-savebar-copy">
+            <p className={`status ${dirty ? "status-review" : "status-ready"}`}>
+              {message ? "Saved" : dirty ? "Unsaved changes" : "No unsaved changes"}
+            </p>
+            {saveBlockedReason && <p className="muted profile-savebar-note">{saveBlockedReason}</p>}
+            {message && <p className="profile-success" role="status">{message}</p>}
+            {error && <p className="error" role="alert">{error}</p>}
+          </div>
+          <button type="submit" disabled={busy || parseBusy || Boolean(saveBlockedReason)}>
+            {busy ? "Saving…" : "Save profile"}
+          </button>
+        </div>
         <fieldset className="profile-fieldset">
           <legend>Basic details</legend>
           <div className="profile-grid two-columns">
@@ -536,9 +580,15 @@ export default function ProfileBuilder({
           <legend>Resume</legend>
           <p className="muted">Upload a PDF or DOCX to get editable suggestions. Only its filename is kept in your profile; the raw upload is processed for this request.</p>
           {draft.cv_filename && <p className="profile-file-name">Current filename: <strong>{draft.cv_filename}</strong></p>}
-          <label className="profile-field">
-            <span>Choose resume (PDF or DOCX)</span>
+          <label className="file-field profile-resume-field" htmlFor="profile-resume-file">
+            <span className="file-field-copy">
+              <strong>Choose resume (PDF or DOCX)</strong>
+              <span className="muted">
+                {resumeFile ? `${resumeFile.name} · ready to parse` : "A PDF or DOCX file, up to the backend limit."}
+              </span>
+            </span>
             <input
+              id="profile-resume-file"
               aria-label="Choose resume (PDF or DOCX)"
               ref={resumeInput}
               type="file"
@@ -565,11 +615,20 @@ export default function ProfileBuilder({
             <p className="notice" role="note">External resume processing is blocked. An administrator must review the current terms for every provider in this route before enabling it.</p>
           ) : provider.external ? (
             <>
+            <div className="provider-summary">
+              <p>
+                Processing route: <strong>{provider.name}</strong>
+                {providerRoute.length > 1 ? ` · ${providerRoute.length} providers in order` : ""}
+              </p>
               {providerRoute.length > 1 && (
-                <p className="muted provider-route" aria-label="Provider fallback order">
-                  Fallback order: {providerRoute.join(" → ")}
-                </p>
+                <details>
+                  <summary>View provider order</summary>
+                  <ol>
+                    {providerRoute.map((providerName) => <li key={providerName}><code>{providerName}</code></li>)}
+                  </ol>
+                </details>
               )}
+            </div>
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -661,7 +720,7 @@ export default function ProfileBuilder({
                 <div className="profile-item-meta">
                   <span className="profile-origin">{skill.origin === "manual" ? "Manual entry" : `Resume suggestion · ${skill.evidence_status}`}</span>
                   {skill.source_ref && <span className="muted">{skill.source_ref.filename}{skill.source_ref.page ? ` · Page ${skill.source_ref.page}` : skill.source_ref.paragraph !== null && skill.source_ref.paragraph !== undefined ? ` · Paragraph ${skill.source_ref.paragraph + 1}` : ""}</span>}
-                  <button type="button" className="profile-remove-button" onClick={() => updateDraft((profile) => ({ ...profile, skills: (profile.skills ?? []).filter((_, itemIndex) => itemIndex !== index) }))} disabled={busy || parseBusy}>Remove</button>
+                  <button type="button" className="profile-remove-button" aria-label={`Remove skill ${index + 1}`} onClick={() => updateDraft((profile) => ({ ...profile, skills: (profile.skills ?? []).filter((_, itemIndex) => itemIndex !== index) }))} disabled={busy || parseBusy}>Remove</button>
                 </div>
               </div>
             ))}
@@ -670,10 +729,16 @@ export default function ProfileBuilder({
 
         <fieldset className="profile-fieldset">
           <legend>Self-reported skillset levels</legend>
-          <div className="profile-rating-note">
-            <span className="profile-origin">Resume text never sets a rating</span>
+          <div className="rating-head">
+            <div>
+              <span className="profile-origin">Resume text never sets a rating</span>
+              <p className="muted">Rate yourself from 1 to 10 using the supplied topic ladder. Every rating is optional in a draft and is your own self-report.</p>
+            </div>
+            <div className="rating-coverage">
+              <p><strong>{ratedCount}</strong> of {rateableCategories.length} ratings</p>
+              <progress aria-label="Rating coverage" value={ratedCount} max={rateableCategories.length || 1} />
+            </div>
           </div>
-          <p className="muted">Rate yourself from 1 to 10 using the supplied topic ladder. Every rating is optional in a draft and is your own self-report.</p>
           <div className="rating-list">
             {rateableCategories.map((category) => {
               const rating = chosenLevel(category);
@@ -692,20 +757,21 @@ export default function ProfileBuilder({
                       {Array.from({ length: 10 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}
                     </select>
                   </label>
-                  <label className="profile-field rating-note">
-                    <span>Optional evidence note</span>
-                    <input
-                      aria-label={`${category.name} rating note`}
-                      maxLength={280}
-                      disabled={!rating}
-                      value={rating?.evidence_note ?? ""}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        if (rating) updateRating(category, String(rating.level), value);
-                      }}
-                      placeholder="What informs your self-rating?"
-                    />
-                  </label>
+                  {rating && (
+                    <label className="profile-field rating-note">
+                      <span>Optional evidence note</span>
+                      <input
+                        aria-label={`${category.name} rating note`}
+                        maxLength={280}
+                        value={rating.evidence_note ?? ""}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          updateRating(category, String(rating.level), value);
+                        }}
+                        placeholder="What informs your self-rating?"
+                      />
+                    </label>
+                  )}
                   <details className="level-guide">
                     <summary>View level guide</summary>
                     {category.levels?.length ? (
@@ -774,73 +840,77 @@ export default function ProfileBuilder({
           </>}
         />
 
-        <fieldset className="profile-fieldset">
-          <legend>Hackathons</legend>
-          <div className="fieldset-actions">
-            <button type="button" onClick={() => updateDraft((profile) => ({ ...profile, hackathons: [...(profile.hackathons ?? []), { name: "", summary: null, year: null }] }))} disabled={busy || parseBusy}>Add hackathon</button>
-          </div>
-          {(draft.hackathons ?? []).length === 0 ? <p className="muted">No hackathons added.</p> : null}
+        <BackgroundSection
+          title="Hackathons"
+          count={(draft.hackathons ?? []).length}
+          emptyText="No hackathons added."
+          addLabel="Add hackathon"
+          onAdd={() => updateDraft((profile) => ({ ...profile, hackathons: [...(profile.hackathons ?? []), { name: "", summary: null, year: null }] }))}
+          busy={busy || parseBusy}
+        >
           {(draft.hackathons ?? []).map((entry, index) => (
             <div className="profile-item-card" key={`hackathon-${index}`}>
               <label className="profile-field"><span>Name</span><input aria-label={`Hackathon name ${index + 1}`} maxLength={200} value={entry.name} onChange={(event) => updateDraft((profile) => ({ ...profile, hackathons: (profile.hackathons ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) }))} /></label>
               <label className="profile-field"><span>Summary</span><textarea aria-label={`Hackathon summary ${index + 1}`} maxLength={500} value={entry.summary ?? ""} onChange={(event) => updateDraft((profile) => ({ ...profile, hackathons: (profile.hackathons ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, summary: event.target.value || null } : item) }))} /></label>
               <label className="profile-field"><span>Year</span><input aria-label={`Hackathon year ${index + 1}`} type="number" min={1900} max={2100} value={entry.year ?? ""} onChange={(event) => updateDraft((profile) => ({ ...profile, hackathons: (profile.hackathons ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, year: yearValue(event.target.value) } : item) }))} /></label>
-              <button type="button" className="profile-remove-button" onClick={() => updateDraft((profile) => ({ ...profile, hackathons: (profile.hackathons ?? []).filter((_, itemIndex) => itemIndex !== index) }))} disabled={busy || parseBusy}>Remove</button>
+              <button type="button" className="profile-remove-button" aria-label={`Remove hackathon ${index + 1}`} onClick={() => updateDraft((profile) => ({ ...profile, hackathons: (profile.hackathons ?? []).filter((_, itemIndex) => itemIndex !== index) }))} disabled={busy || parseBusy}>Remove</button>
             </div>
           ))}
-        </fieldset>
+        </BackgroundSection>
 
-        <fieldset className="profile-fieldset">
-          <legend>Internships</legend>
-          <div className="fieldset-actions">
-            <button type="button" onClick={() => updateDraft((profile) => ({ ...profile, internships: [...(profile.internships ?? []), { employer: "", role: null, summary: null, year: null }] }))} disabled={busy || parseBusy}>Add internship</button>
-          </div>
-          {(draft.internships ?? []).length === 0 ? <p className="muted">No internships added.</p> : null}
+        <BackgroundSection
+          title="Internships"
+          count={(draft.internships ?? []).length}
+          emptyText="No internships added."
+          addLabel="Add internship"
+          onAdd={() => updateDraft((profile) => ({ ...profile, internships: [...(profile.internships ?? []), { employer: "", role: null, summary: null, year: null }] }))}
+          busy={busy || parseBusy}
+        >
           {(draft.internships ?? []).map((entry, index) => (
             <div className="profile-item-card" key={`internship-${index}`}>
               <label className="profile-field"><span>Employer</span><input aria-label={`Internship employer ${index + 1}`} maxLength={200} value={entry.employer} onChange={(event) => updateDraft((profile) => ({ ...profile, internships: (profile.internships ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, employer: event.target.value } : item) }))} /></label>
               <label className="profile-field"><span>Role</span><input aria-label={`Internship role ${index + 1}`} maxLength={200} value={entry.role ?? ""} onChange={(event) => updateDraft((profile) => ({ ...profile, internships: (profile.internships ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, role: event.target.value || null } : item) }))} /></label>
               <label className="profile-field"><span>Summary</span><textarea aria-label={`Internship summary ${index + 1}`} maxLength={500} value={entry.summary ?? ""} onChange={(event) => updateDraft((profile) => ({ ...profile, internships: (profile.internships ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, summary: event.target.value || null } : item) }))} /></label>
               <label className="profile-field"><span>Year</span><input aria-label={`Internship year ${index + 1}`} type="number" min={1900} max={2100} value={entry.year ?? ""} onChange={(event) => updateDraft((profile) => ({ ...profile, internships: (profile.internships ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, year: yearValue(event.target.value) } : item) }))} /></label>
-              <button type="button" className="profile-remove-button" onClick={() => updateDraft((profile) => ({ ...profile, internships: (profile.internships ?? []).filter((_, itemIndex) => itemIndex !== index) }))} disabled={busy || parseBusy}>Remove</button>
+              <button type="button" className="profile-remove-button" aria-label={`Remove internship ${index + 1}`} onClick={() => updateDraft((profile) => ({ ...profile, internships: (profile.internships ?? []).filter((_, itemIndex) => itemIndex !== index) }))} disabled={busy || parseBusy}>Remove</button>
             </div>
           ))}
-        </fieldset>
+        </BackgroundSection>
 
-        <fieldset className="profile-fieldset">
-          <legend>Certifications</legend>
-          <div className="fieldset-actions">
-            <button type="button" onClick={() => updateDraft((profile) => ({ ...profile, certifications: [...(profile.certifications ?? []), { name: "", issuer: null, year: null }] }))} disabled={busy || parseBusy}>Add certification</button>
-          </div>
-          {(draft.certifications ?? []).length === 0 ? <p className="muted">No certifications added.</p> : null}
+        <BackgroundSection
+          title="Certifications"
+          count={(draft.certifications ?? []).length}
+          emptyText="No certifications added."
+          addLabel="Add certification"
+          onAdd={() => updateDraft((profile) => ({ ...profile, certifications: [...(profile.certifications ?? []), { name: "", issuer: null, year: null }] }))}
+          busy={busy || parseBusy}
+        >
           {(draft.certifications ?? []).map((entry, index) => (
             <div className="profile-item-card" key={`certification-${index}`}>
               <label className="profile-field"><span>Certification</span><input aria-label={`Certification name ${index + 1}`} maxLength={200} value={entry.name} onChange={(event) => updateDraft((profile) => ({ ...profile, certifications: (profile.certifications ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) }))} /></label>
               <label className="profile-field"><span>Issuer</span><input aria-label={`Certification issuer ${index + 1}`} maxLength={200} value={entry.issuer ?? ""} onChange={(event) => updateDraft((profile) => ({ ...profile, certifications: (profile.certifications ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, issuer: event.target.value || null } : item) }))} /></label>
               <label className="profile-field"><span>Year</span><input aria-label={`Certification year ${index + 1}`} type="number" min={1900} max={2100} value={entry.year ?? ""} onChange={(event) => updateDraft((profile) => ({ ...profile, certifications: (profile.certifications ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, year: yearValue(event.target.value) } : item) }))} /></label>
-              <button type="button" className="profile-remove-button" onClick={() => updateDraft((profile) => ({ ...profile, certifications: (profile.certifications ?? []).filter((_, itemIndex) => itemIndex !== index) }))} disabled={busy || parseBusy}>Remove</button>
+              <button type="button" className="profile-remove-button" aria-label={`Remove certification ${index + 1}`} onClick={() => updateDraft((profile) => ({ ...profile, certifications: (profile.certifications ?? []).filter((_, itemIndex) => itemIndex !== index) }))} disabled={busy || parseBusy}>Remove</button>
             </div>
           ))}
-        </fieldset>
+        </BackgroundSection>
 
-        <fieldset className="profile-fieldset">
-          <legend>Preferred roles</legend>
-          <div className="fieldset-actions">
-            <button type="button" onClick={() => updateDraft((profile) => ({ ...profile, preferred_roles: [...(profile.preferred_roles ?? []), ""] }))} disabled={busy || parseBusy}>Add role</button>
-          </div>
-          {(draft.preferred_roles ?? []).length === 0 ? <p className="muted">No preferred roles added.</p> : null}
+        <BackgroundSection
+          title="Preferred roles"
+          count={(draft.preferred_roles ?? []).length}
+          emptyText="No preferred roles added."
+          addLabel="Add role"
+          onAdd={() => updateDraft((profile) => ({ ...profile, preferred_roles: [...(profile.preferred_roles ?? []), ""] }))}
+          busy={busy || parseBusy}
+        >
           {(draft.preferred_roles ?? []).map((role, index) => (
             <div className="profile-role-row" key={`role-${index}`}>
               <label className="profile-field"><span>Role</span><input aria-label={`Preferred role ${index + 1}`} maxLength={120} value={role} onChange={(event) => updateDraft((profile) => ({ ...profile, preferred_roles: (profile.preferred_roles ?? []).map((item, itemIndex) => itemIndex === index ? event.target.value : item) }))} /></label>
-              <button type="button" className="profile-remove-button" onClick={() => updateDraft((profile) => ({ ...profile, preferred_roles: (profile.preferred_roles ?? []).filter((_, itemIndex) => itemIndex !== index) }))} disabled={busy || parseBusy}>Remove</button>
+              <button type="button" className="profile-remove-button" aria-label={`Remove preferred role ${index + 1}`} onClick={() => updateDraft((profile) => ({ ...profile, preferred_roles: (profile.preferred_roles ?? []).filter((_, itemIndex) => itemIndex !== index) }))} disabled={busy || parseBusy}>Remove</button>
             </div>
           ))}
-        </fieldset>
+        </BackgroundSection>
 
-        <div className="profile-submit-row">
-          <button type="submit" disabled={busy || parseBusy}>{busy ? "Saving…" : "Save profile"}</button>
-          <span className="muted">Missing ratings are allowed here; Talent Check needs all 12 before it can show a score.</span>
-        </div>
       </form>
     </section>
   );
@@ -860,20 +930,62 @@ type CollectionEditorProps<T> = {
 
 function CollectionEditor<T>({ title, values, emptyText, addLabel, onAdd, onRemove, onPatch, busy, render }: CollectionEditorProps<T>) {
   return (
-    <fieldset className="profile-fieldset">
+    <BackgroundSection
+      title={title}
+      count={values.length}
+      emptyText={emptyText}
+      addLabel={addLabel}
+      onAdd={onAdd}
+      busy={busy}
+    >
+      {values.map((item, index) => (
+        <div className="profile-item-card" key={`${title}-${index}`}>
+          {render(item, index, (changes) => onPatch(index, changes))}
+          <button
+            type="button"
+            className="profile-remove-button"
+            aria-label={`Remove ${title.toLowerCase()} ${index + 1}`}
+            onClick={() => onRemove(index)}
+            disabled={busy}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+    </BackgroundSection>
+  );
+}
+
+function BackgroundSection({
+  title,
+  count,
+  emptyText,
+  addLabel,
+  onAdd,
+  busy,
+  children,
+}: {
+  title: string;
+  count: number;
+  emptyText: string;
+  addLabel: string;
+  onAdd: () => void;
+  busy: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <fieldset className="profile-fieldset profile-background">
       <legend>{title}</legend>
-      <div className="fieldset-actions">
+      <div className="fieldset-head">
+        <p className="muted">{count === 0 ? emptyText : `${count} ${count === 1 ? "entry" : "entries"} on file.`}</p>
         <button type="button" onClick={onAdd} disabled={busy}>{addLabel}</button>
       </div>
-      {values.length === 0 ? <p className="muted">{emptyText}</p> : null}
-      <div className="profile-list">
-        {values.map((item, index) => (
-          <div className="profile-item-card" key={`${title}-${index}`}>
-            {render(item, index, (changes) => onPatch(index, changes))}
-            <button type="button" className="profile-remove-button" onClick={() => onRemove(index)} disabled={busy}>Remove</button>
-          </div>
-        ))}
-      </div>
+      {count > 0 && (
+        <details className="collection-details">
+          <summary>Review {title.toLowerCase()} entries ({count})</summary>
+          <div className="profile-list">{children}</div>
+        </details>
+      )}
     </fieldset>
   );
 }

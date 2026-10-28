@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { ReactNode } from "react";
 
 import { api, type ExtractionResult, type HealthResponse } from "./lib/api";
@@ -23,6 +23,11 @@ function reviewItems<T>(values: T[], prefix: string): ReviewItem<T>[] {
 function sourceLocation(result: ExtractionResult, page?: number | null, paragraph?: number | null) {
   const place = page ? `Page ${page}` : paragraph !== null && paragraph !== undefined ? `Paragraph ${paragraph + 1}` : "Source text";
   return `${result.filename} · ${place}`;
+}
+
+function fileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 type RequirementType = "required" | "preferred" | "mentioned" | "unclear";
@@ -54,7 +59,7 @@ export function ExtractionReview({
             {result.metadata.model ? ` / ${result.metadata.model}` : ""}
           </p>
         </div>
-        <span className="badge badge-ready">Evidence checked</span>
+        <span className="status status-ready">Evidence checked</span>
       </div>
 
       {result.metadata.redaction_applied && (
@@ -80,7 +85,7 @@ export function ExtractionReview({
             <li key={`${skill.skill_id ?? skill.skill_name}-${index}`}>
               <div className="skill-title">
                 <strong>{skill.skill_name}</strong>
-                <span className="muted">{skill.category_code}</span>
+                <span className="code-chip">{skill.category_code}</span>
               </div>
               <label className="requirement-review-control">
                 Requirement classification
@@ -105,7 +110,7 @@ export function ExtractionReview({
                 </select>
               </label>
               <blockquote>{skill.evidence}</blockquote>
-              <p className="muted">
+              <p className="source-line">
                 {skill.source_ref
                   ? sourceLocation(result, skill.source_ref.page, skill.source_ref.paragraph)
                   : "Source location unavailable"}
@@ -205,7 +210,7 @@ function ResumeSuggestionReview({
                 />
                 Accept
               </label>
-              <button type="button" onClick={() => setSkills((items) => items.filter((item) => item.id !== id))}>
+              <button type="button" aria-label={`Remove skill ${value.skill_name}`} onClick={() => setSkills((items) => items.filter((item) => item.id !== id))}>
                 Remove
               </button>
             </div>
@@ -226,10 +231,10 @@ function ResumeSuggestionReview({
                 ))}
               />
             </label>
-            <span className="muted">{value.category_code} · {value.requirement_type ?? "Resume skill"}</span>
+            <span className="skill-meta"><span className="code-chip">{value.category_code}</span> {value.requirement_type ?? "Resume skill"}</span>
             {value.evidence && <blockquote>{value.evidence}</blockquote>}
             {value.source_ref && (
-              <span className="muted">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>
+              <span className="source-line">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>
             )}
           </li>
         ))}
@@ -246,7 +251,7 @@ function ResumeSuggestionReview({
                   ))} />
                 Accept
               </label>
-              <button type="button" onClick={() => setEducation((items) => items.filter((item) => item.id !== id))}>
+              <button type="button" aria-label={`Remove education ${value.institution}`} onClick={() => setEducation((items) => items.filter((item) => item.id !== id))}>
                 Remove
               </button>
             </div>
@@ -290,7 +295,7 @@ function ResumeSuggestionReview({
               </label>
             </div>
             {value.evidence && <blockquote>{value.evidence}</blockquote>}
-            {value.source_ref && <span className="muted">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>}
+            {value.source_ref && <span className="source-line">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>}
           </li>
         ))}
       </SuggestionSection>
@@ -306,7 +311,7 @@ function ResumeSuggestionReview({
                   ))} />
                 Accept
               </label>
-              <button type="button" onClick={() => setProjects((items) => items.filter((item) => item.id !== id))}>
+              <button type="button" aria-label={`Remove project ${value.name}`} onClick={() => setProjects((items) => items.filter((item) => item.id !== id))}>
                 Remove
               </button>
             </div>
@@ -325,7 +330,7 @@ function ResumeSuggestionReview({
                 ))} />
             </label>
             {value.evidence && <blockquote>{value.evidence}</blockquote>}
-            {value.source_ref && <span className="muted">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>}
+            {value.source_ref && <span className="source-line">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>}
           </li>
         ))}
       </SuggestionSection>
@@ -341,7 +346,7 @@ function ResumeSuggestionReview({
                   ))} />
                 Accept
               </label>
-              <button type="button" onClick={() => setExperience((items) => items.filter((item) => item.id !== id))}>
+              <button type="button" aria-label={`Remove experience ${value.employer}`} onClick={() => setExperience((items) => items.filter((item) => item.id !== id))}>
                 Remove
               </button>
             </div>
@@ -385,7 +390,7 @@ function ResumeSuggestionReview({
                 ))} />
             </label>
             {value.evidence && <blockquote>{value.evidence}</blockquote>}
-            {value.source_ref && <span className="muted">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>}
+            {value.source_ref && <span className="source-line">{sourceLocation(result, value.source_ref.page, value.source_ref.paragraph)}</span>}
           </li>
         ))}
       </SuggestionSection>
@@ -421,8 +426,8 @@ export default function DocumentIntelligence({
   onJdAnalyzed?: (result: ExtractionResult | null) => void;
   onResumeAccepted?: (result: ExtractionResult) => void;
 }) {
-  const providerRoute = provider.route ?? [];
   const [mode, setMode] = useState<AnalysisMode>("jd");
+  const tabRefs = useRef<Record<AnalysisMode, HTMLButtonElement | null>>({ jd: null, resume: null });
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -447,6 +452,19 @@ export default function DocumentIntelligence({
     setResult(null);
     setError(null);
     setConsent(false);
+  }
+
+  function moveTabFocus(event: KeyboardEvent<HTMLButtonElement>) {
+    const order: AnalysisMode[] = ["jd", "resume"];
+    const current = order.indexOf(mode);
+    let next = current;
+    if (event.key === "ArrowRight") next = (current + 1) % order.length;
+    else if (event.key === "ArrowLeft") next = (current - 1 + order.length) % order.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = order.length - 1;
+    else return;
+    event.preventDefault();
+    tabRefs.current[order[next]]?.focus();
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -474,121 +492,183 @@ export default function DocumentIntelligence({
       <div className="section-heading">
         <div>
           <h2 id="document-intelligence-title">Document intelligence</h2>
-          <p className="muted">Analyze one job description or review editable resume suggestions.</p>
+          <p className="section-purpose">Analyze one job description or review editable resume suggestions.</p>
         </div>
-        <span className={`badge ${provider.configured ? "badge-ready" : ""}`}>
-          {provider.configured ? `Provider: ${provider.name}` : "Provider not configured"}
+        <span className={`status ${provider.configured ? "status-ready" : "status-review"}`}>
+          {provider.configured ? `Provider ${provider.name}` : "Provider not configured"}
         </span>
       </div>
-      {provider.configured && providerRoute.length > 1 && (
-        <p className="muted provider-route" aria-label="Provider fallback order">
-          Fallback order: {providerRoute.join(" → ")}
-        </p>
-      )}
 
-      <div className="mode-tabs" role="tablist" aria-label="Document type">
+      <div
+        className="mode-tabs"
+        role="tablist"
+        aria-label="Document type"
+      >
         <button
           type="button"
           role="tab"
+          id="document-tab-jd"
           aria-selected={mode === "jd"}
+          aria-controls="document-tab-panel"
+          tabIndex={mode === "jd" ? 0 : -1}
+          ref={(node) => { tabRefs.current.jd = node; }}
           onClick={() => chooseMode("jd")}
+          onKeyDown={moveTabFocus}
         >
           Job description
         </button>
         <button
           type="button"
           role="tab"
+          id="document-tab-resume"
           aria-selected={mode === "resume"}
+          aria-controls="document-tab-panel"
+          tabIndex={mode === "resume" ? 0 : -1}
+          ref={(node) => { tabRefs.current.resume = node; }}
           onClick={() => chooseMode("resume")}
+          onKeyDown={moveTabFocus}
         >
           Resume
         </button>
       </div>
 
-      <form className="upload-form" onSubmit={submit}>
-        <label htmlFor="document-file">
-          {mode === "jd" ? "Job description" : "Resume"} (PDF or DOCX)
-          <input
-            id="document-file"
-            type="file"
-            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            onChange={(event) => {
-              setFile(event.target.files?.[0] ?? null);
-              setResult(null);
-              setError(null);
-              if (mode === "jd") onJdAnalyzed?.(null);
-            }}
-          />
-        </label>
+      <div
+        className="mode-panel"
+        id="document-tab-panel"
+        role="tabpanel"
+        aria-labelledby={mode === "jd" ? "document-tab-jd" : "document-tab-resume"}
+      >
+        <form className="upload-form" onSubmit={submit} aria-busy={busy}>
+          <label className="file-field" htmlFor="document-file">
+            <span className="file-field-copy">
+              <strong>{mode === "jd" ? "Job description" : "Resume"} (PDF or DOCX)</strong>
+              <span className="muted">
+                {file
+                  ? `${file.name} · ${fileSize(file.size)} · ready to analyze`
+                  : "Choose a file. PDF or DOCX only."}
+              </span>
+            </span>
+            <input
+              id="document-file"
+              aria-label={mode === "jd" ? "Job description (PDF or DOCX)" : "Resume (PDF or DOCX)"}
+              type="file"
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null);
+                setResult(null);
+                setError(null);
+                if (mode === "jd") onJdAnalyzed?.(null);
+              }}
+            />
+          </label>
 
-        {isExternalResume && (
-          <div className="privacy-block">
-            {!resumeTermsReviewed ? (
-              <p className="notice" role="note">
-                External resume processing is blocked. An administrator must review the current
-                terms for every provider in this route before enabling it.
-              </p>
-            ) : (
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(event) => setConsent(event.target.checked)}
-                  disabled={!resumeTermsReviewed}
-                />
-                I reviewed this route’s current terms and consent that the redacted resume may be
-                sent to each listed provider in order until one returns a valid result.
-              </label>
-            )}
-          </div>
-        )}
+          {isExternalResume && (
+            <div className="privacy-block">
+              {!resumeTermsReviewed ? (
+                <p className="notice" role="note">
+                  External resume processing is blocked. An administrator must review the current
+                  terms for every provider in this route before enabling it.
+                </p>
+              ) : (
+                <>
+                  <ProviderSummary provider={provider} />
+                  <label className="checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      onChange={(event) => setConsent(event.target.checked)}
+                      disabled={!resumeTermsReviewed}
+                    />
+                    I reviewed this route’s current terms and consent that the redacted resume may be
+                    sent to each listed provider in order until one returns a valid result.
+                  </label>
+                </>
+              )}
+            </div>
+          )}
 
-        {isExternalJd && (
-          <div className="privacy-block">
-            {!jdTermsReviewed ? (
-              <p className="notice" role="note">
-                External job-description processing is blocked until an administrator reviews the
-                current terms for every provider in this route.
-              </p>
-            ) : (
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(event) => setConsent(event.target.checked)}
-                />
-                I reviewed this route’s current terms and consent that the job description may be
-                sent to each listed provider in order until one returns a valid result.
-              </label>
-            )}
-          </div>
-        )}
+          {isExternalJd && (
+            <div className="privacy-block">
+              {!jdTermsReviewed ? (
+                <p className="notice" role="note">
+                  External job-description processing is blocked until an administrator reviews the
+                  current terms for every provider in this route.
+                </p>
+              ) : (
+                <>
+                  <ProviderSummary provider={provider} />
+                  <label className="checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      onChange={(event) => setConsent(event.target.checked)}
+                    />
+                    I reviewed this route’s current terms and consent that the job description may be
+                    sent to each listed provider in order until one returns a valid result.
+                  </label>
+                </>
+              )}
+            </div>
+          )}
 
-        {!provider.configured && (
-          <p className="notice" role="note">
-            Configure an available backend provider to analyze documents. The default local mock
-            mode works without credentials.
+          {!provider.configured && (
+            <p className="notice" role="note">
+              Configure an available backend provider to analyze documents. The default local mock
+              mode works without credentials.
+            </p>
+          )}
+          <p className="muted privacy-note">
+            Uploads are processed for this request only. The app does not save raw document files.
+          </p>
+          <button type="submit" disabled={!canSubmit}>
+            {busy ? "Analyzing…" : mode === "jd" ? "Analyze job description" : "Parse resume"}
+          </button>
+        </form>
+
+        {busy && (
+          <p className="work-state" role="status">
+            {mode === "jd" ? "Analyzing the job description" : "Parsing the resume"} and checking
+            every claim against its source. The result will appear here.
           </p>
         )}
-        <p className="muted privacy-note">
-          Uploads are processed for this request only. The app does not save raw document files.
-        </p>
-        <button type="submit" disabled={!canSubmit}>
-          {busy ? "Analyzing…" : mode === "jd" ? "Analyze job description" : "Parse resume"}
-        </button>
-      </form>
-
-      {error && <p className="error" role="alert">{error}</p>}
-      {result && (
-        <ExtractionReview
-          result={result}
-          onJdUpdated={(updated) => {
-            setResult(updated);
-            onJdAnalyzed?.(updated);
-          }}
-          onResumeAccepted={onResumeAccepted}
-        />
-      )}
+        {error && <p className="error" role="alert">{error}</p>}
+        {!result && !busy && !error && (
+          <p className="empty-state">
+            No document analyzed yet. The extracted skills, quotes and source locations will appear
+            here — and nothing is saved until you choose to use it.
+          </p>
+        )}
+        {result && (
+          <ExtractionReview
+            result={result}
+            onJdUpdated={(updated) => {
+              setResult(updated);
+              onJdAnalyzed?.(updated);
+            }}
+            onResumeAccepted={onResumeAccepted}
+          />
+        )}
+      </div>
     </section>
+  );
+}
+
+function ProviderSummary({ provider }: { provider: HealthResponse["provider"] }) {
+  const route = provider.route ?? [];
+  return (
+    <div className="provider-summary">
+      <p>
+        Processing route: <strong>{provider.name}</strong>
+        {route.length > 1 ? ` · ${route.length} providers in order` : ""}
+      </p>
+      {route.length > 1 && (
+        <details>
+          <summary>View provider order and model IDs</summary>
+          <ol>
+            {route.map((entry) => <li key={entry}><code>{entry}</code></li>)}
+          </ol>
+        </details>
+      )}
+    </div>
   );
 }

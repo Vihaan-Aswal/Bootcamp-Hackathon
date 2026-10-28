@@ -179,6 +179,7 @@ Hierarchy inside a stage: overline "Stage 01" → title → one-sentence purpose
 4. Tab keyboard support uses **manual activation** (Arrow keys move focus, Enter/Space activates) so arrowing across tabs cannot wipe an analyzed JD.
 5. After a successful score run, focus moves to the result heading; the score line is no longer inside an `aria-live` region (focus plus a live region would double-announce).
 6. Validation focuses the first invalid field on submit.
+7. The stage scroll-spy derives the active stage from all stage positions, not only the latest IntersectionObserver entries (fast smooth scrolls could leave the wrong stage marked), and the active mobile tab is kept in view after resize or orientation change.
 No scoring, validation rules, API payloads, storage or state ownership change.
 
 ---

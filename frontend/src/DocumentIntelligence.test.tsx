@@ -197,7 +197,7 @@ describe("document intelligence screen", () => {
       target: { value: "2025" },
     });
     expect(screen.getByLabelText("Edit education end year at Radix Institute")).toHaveProperty("value", "2025");
-    fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[3]);
+    fireEvent.click(screen.getByRole("button", { name: "Remove experience Example Co" }));
     expect(screen.queryByLabelText(/Edit employer Example Co/)).toBeNull();
 
     rerender(
@@ -214,6 +214,46 @@ describe("document intelligence screen", () => {
     );
     expect(screen.getByLabelText("Edit SQL")).toBeTruthy();
     expect(screen.queryByLabelText("Edit Python 3")).toBeNull();
+  });
+
+  it("shows an empty state before a document is analyzed", () => {
+    render(<DocumentIntelligence provider={mockProvider} />);
+    expect(screen.getByText(/No document analyzed yet/)).toBeTruthy();
+  });
+
+  it("moves tab focus with arrow keys without switching mode or clearing the file", () => {
+    render(<DocumentIntelligence provider={mockProvider} />);
+    const file = new File(["mock JD text"], "role.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(screen.getByLabelText(/Job description \(PDF or DOCX\)/), {
+      target: { files: [file] },
+    });
+
+    const jdTab = screen.getByRole("tab", { name: "Job description" });
+    const resumeTab = screen.getByRole("tab", { name: "Resume" });
+    fireEvent.keyDown(jdTab, { key: "ArrowRight" });
+
+    expect(document.activeElement).toBe(resumeTab);
+    expect(jdTab.getAttribute("aria-selected")).toBe("true");
+    expect(resumeTab.getAttribute("aria-selected")).toBe("false");
+    expect(screen.getByText(/role\.docx · .*ready to analyze/)).toBeTruthy();
+  });
+
+  it("announces that a document is being analyzed", async () => {
+    let resolveFetch: (response: Response) => void = () => undefined;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    })));
+    render(<DocumentIntelligence provider={mockProvider} />);
+    const file = new File(["mock JD text"], "role.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    fireEvent.change(screen.getByLabelText(/Job description \(PDF or DOCX\)/), {
+      target: { files: [file] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Analyze job description" }));
+
+    expect(screen.getByRole("status").textContent).toContain("Analyzing the job description");
+
+    resolveFetch(jsonResponse(extraction));
+    expect(await screen.findByText("Python is required for this role.")).toBeTruthy();
   });
 
   it("passes only accepted resume suggestions to Profile Builder", () => {

@@ -41,12 +41,12 @@ function SkillList({ title, skills, emptyText }: { title: string; skills: Skill[
             <li key={`${skill.skill_id ?? skill.skill_name}-${index}`}>
               <div className="skill-title">
                 <strong>{skill.skill_name}</strong>
-                <span className="badge">{skill.category_code}</span>
-                {skill.requirement_type && <span className="muted">{skill.requirement_type}</span>}
+                <span className="code-chip">{skill.category_code}</span>
+                {skill.requirement_type && <span className="requirement-label">{skill.requirement_type}</span>}
               </div>
               {skill.evidence && <blockquote>{skill.evidence}</blockquote>}
               {skill.source_ref && (
-                <p className="muted">
+                <p className="source-line">
                   {skill.source_ref.filename}
                   {skill.source_ref.page ? ` · Page ${skill.source_ref.page}` : ""}
                   {skill.source_ref.paragraph !== null && skill.source_ref.paragraph !== undefined
@@ -70,26 +70,40 @@ function ResultView({ result }: { result: SkillMatchResult }) {
   const unclear = result.unclear ?? [];
   const evidenceGroups = result.requirement_evidence ?? [];
   return (
-    <div className="m4-result" aria-live="polite">
+    <div className="m4-result">
+      {result.status === "not_scorable" ? (
+        <div className="score-withheld">
+          <p className="notice" role="status">
+            No score: JD Analytics did not identify any evidence-backed required skills for this JD.
+          </p>
+          <p className="score-arithmetic">
+            <span>{matched.length} confirmed</span>
+            <span>{missingRequired.length} missing</span>
+            <span>{preferred.length} preferred</span>
+          </p>
+        </div>
+      ) : (
+        <div className="score-stamp">
+          <p className="score-arithmetic">
+            <span>{matched.length} confirmed</span>
+            <span>{missingRequired.length} missing</span>
+            <span>{preferred.length} preferred</span>
+          </p>
+          <p className="readiness-score" role="status">
+            Required-skill match:{" "}
+            <strong>{result.match_score}%</strong>
+            <span className="score-denominator">
+              {`${result.distinct_required_skill_count} distinct required skill${result.distinct_required_skill_count === 1 ? "" : "s"}`}
+            </span>
+          </p>
+        </div>
+      )}
+
       <SkillList
         title={`Missing required skills (${missingRequired.length})`}
         skills={missingRequired}
         emptyText="No required skills are missing."
       />
-
-      {result.status === "not_scorable" ? (
-        <p className="notice" role="status">
-          No score: JD Analytics did not identify any evidence-backed required skills for this JD.
-        </p>
-      ) : (
-        <p className="readiness-score" role="status">
-          Required-skill match: <strong>{result.match_score}%</strong>
-          <span className="muted">
-            {` · ${result.distinct_required_skill_count} distinct required skill${result.distinct_required_skill_count === 1 ? "" : "s"}`}
-          </span>
-        </p>
-      )}
-
       <SkillList
         title={`Matched required skills (${matched.length})`}
         skills={matched}
@@ -111,13 +125,13 @@ function ResultView({ result }: { result: SkillMatchResult }) {
               <li key={group.group_key}>
                 <div className="skill-title">
                   <strong>{group.evidence[0]?.skill_name ?? "JD requirement"}</strong>
-                  <span className="badge">{group.requirement_type}</span>
+                  <span className="code-chip">{group.requirement_type}</span>
                   {group.evidence.length > 1 && <span className="muted">{group.evidence.length} source quotes</span>}
                 </div>
                 {group.evidence.map((skill, index) => (
                   <div key={`${skill.source_ref?.element_id ?? index}-${index}`}>
                     {skill.evidence && <blockquote>{skill.evidence}</blockquote>}
-                    <p className="muted">
+                    <p className="source-line">
                       {skill.source_ref?.filename ?? "Source location unavailable"}
                       {skill.source_ref?.page ? ` · Page ${skill.source_ref.page}` : ""}
                       {skill.source_ref?.paragraph !== null && skill.source_ref?.paragraph !== undefined
@@ -194,9 +208,9 @@ export default function SkillMatchPanel({
       <div className="section-heading">
         <div>
           <h2 id="skill-match-title">Skill Matching</h2>
-          <p className="muted">Compare a saved profile with one evidence-backed JD Analytics result.</p>
+          <p className="section-purpose">Compare a saved profile with one evidence-backed JD Analytics result.</p>
         </div>
-        <span className="badge badge-ready">M4</span>
+        <span className="status status-info">M4 scoring</span>
       </div>
 
       <form className="m4-controls" onSubmit={runMatch}>
@@ -222,10 +236,10 @@ export default function SkillMatchPanel({
       </form>
 
       {profiles.length === 0 && (
-        <p className="muted">Create and save a profile before matching JD requirements.</p>
+        <p className="empty-state">Create and save a profile before matching JD requirements.</p>
       )}
       {!jd ? (
-        <p className="muted">Analyze a job description above to load its JD skill list here.</p>
+        <p className="empty-state">Analyze a job description above to load its JD skill list here.</p>
       ) : (
         <p className="muted jd-selection">
           Selected JD: <strong>{jd.filename}</strong> · {jd.skills?.length ?? 0} extracted skill
