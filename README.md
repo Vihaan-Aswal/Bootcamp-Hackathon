@@ -1,217 +1,148 @@
 # RADIX Talent Match
 
-Standalone candidate-facing app for the RADIX Talent Match hackathon: analyse one job
-description, build a profile from a resume plus manual edits, compare self-reported levels
-with one company's 12-skillset bar, and match skills against that one JD.
+A candidate-facing application for reviewing job requirements, turning resume content into an editable profile, checking self-reported skill levels, and comparing a profile with one job description.
 
-This is a new project, separate from the `Bootcamp company` codebase. No application code,
-database schema or secret was copied from it.
+RADIX Talent Match is a standalone project. It does not use the separate Bootcamp company application or its database schema.
 
-## Current state
+## Project status
 
-All five modules and the Evidence Ledger frontend are implemented. The offline official-sample
-mock evaluator passes 6/6 JD and 4/4 resume extraction checks. Flow 1 and Flow 2 were also run
-through the configured external route with per-file consent. Both produced evidence-backed skills,
-but neither JD had a confirmed required skill, so Skill Match correctly returned no score. Review
-the displayed evidence and requirement labels before claiming an official match result.
+The five product modules and the Evidence Ledger interface are implemented. As of 2026-10-28:
 
-Supabase now uses normal email/password sign-in and account creation. Document analysis works
-before sign-in; cloud profile save/load requires a confirmed account. The project allows email
-sign-up and requires confirmation. No account was created for the audit, so cloud save/reload and
-two-owner RLS remain unverified. The original official company JSON is still missing; the app marks
-the CSV-derived company snapshot as provisional. See [`docs/m5_walkthrough.md`](docs/m5_walkthrough.md)
-for evidence and remaining actions, and [`docs/REDESIGN_REPORT.md`](docs/REDESIGN_REPORT.md) for
-the Evidence Ledger implementation results.
+- The local mock evaluator passed the official extraction thresholds: 6 of 6 job descriptions and 4 of 4 resumes.
+- The two authorized official flows, Flow 1 and Flow 2, were processed through the configured external model route with per-upload consent. Both returned evidence-backed results, but neither had a confirmed required skill, so neither produced a Skill Match score.
+- Supabase email/password sign-in and account creation are implemented. Live profile save/reload and cross-user RLS isolation have not been verified with signed-in accounts.
+- The original official company skillset JSON was unavailable. The app uses a visibly labelled CSV-derived provisional dataset.
+- Automated checks passed: 38 frontend tests, frontend typecheck and production build, backend tests and Ruff.
 
-- independent FastAPI backend and React/Vite/TypeScript frontend, both runnable;
-- versioned Pydantic v2 contract (`backend/app/contracts/v1.py`) plus a flat provider DTO;
-- generated frontend API types (`frontend/src/lib/api-types.ts`) from the backend OpenAPI schema;
-- versioned skill registry: 12 RADIX categories, the supplied 10-level topic ladder and an
-  approved skill/alias list used for deterministic matching;
-- single company-data loader for the local 12-skill snapshot, with provenance and hash.
-- one shared PDF/DOCX parser with page/paragraph locations, scanned-PDF OCR-required errors,
-  upload/archive limits, evidence-quote verification, and guaranteed request upload cleanup;
-- JD Analytics and Resume Parsing endpoints returning the shared contract with source evidence;
-- a no-network local mock provider, plus single-provider OpenRouter, Groq, Gemini and
-  OpenAI-compatible HTTP adapters; all model output is validated locally with Pydantic;
-- a candidate screen for document uploads, evidence review and per-upload consent before external
-  JD or resume processing.
-- a local JD evidence-review control so a person can classify each extracted skill as required,
-  preferred, mentioned or unclear before scoring;
-- an editable profile form for resume suggestions, education, projects, experience, activities,
-  preferred roles and all 12 optional self-reported ratings;
-- JSON import/export, a local browser-storage adapter, and a browser Supabase repository protected
-  by per-session row-level ownership policies.
-- a Talent Check that requires all 12 self-reported ratings, shows missing ratings without a score,
-  and calculates capped equal-weighted readiness with per-skillset gaps;
-- deterministic JD skill matching with approved aliases, separate required/preferred/mentioned/
-  unclear groups, missing requirements, and explicit confirmation for fuzzy suggestions.
-- API and single-screen integration coverage across all five modules, plus labelled synthetic DOCX
-  fixtures that exercise two roles and two distinct candidate results with the local mock provider.
+See [the M5 walkthrough](docs/m5_walkthrough.md) for acceptance evidence and remaining actions, and [the redesign report](docs/REDESIGN_REPORT.md) for frontend implementation details. These results do not establish that every live integration is verified.
 
-`GET /api/v1/health` reports the implemented modules as `ready`. Official-sample parsing currently
-meets the local mock thresholds (6/6 JDs and 4/4 resumes). The mock conservatively leaves
-ambiguous JD requirements unconfirmed; use the visible evidence review to classify them locally.
-Two official JD/role flows have been exercised and recorded as Flow 1 and Flow 2. Their results
-need human requirement review before either can produce an official Skill Match score. Synthetic
-fixtures are a demo fallback, not official acceptance data.
-The local `prd.md` and `implementation_plan.md` hold planning details and are intentionally
-excluded from Git.
+## What the app does
 
-```text
-backend/     FastAPI service: contracts, registry, company-data loader, tests
-frontend/    React/Vite/TypeScript candidate application
-supabase/    App-specific migrations, local CLI config and RLS checks
-data/        Reference data and local sample inputs
-references/  Source PDFs and the checklist workbook (local only)
-```
+1. **JD Analytics** — parses PDF and DOCX job descriptions, extracts skills with source evidence, and lets a person review each skill's requirement classification.
+2. **Resume Parsing** — extracts supported resume details and skills with evidence and source locations.
+3. **Profile Builder** — creates an editable profile from resume suggestions and manual input. The 12 skillset ratings are optional, self-reported values; they are never inferred from the resume.
+4. **Talent Check** — compares all 12 self-reported ratings with a selected company's requirement levels and displays the score and per-skillset gaps. The score is withheld when ratings are missing.
+5. **Skill Matching** — compares a profile with one JD. Approved aliases are matched automatically; fuzzy suggestions need explicit confirmation. Only confirmed required skills contribute to the score.
 
-## Run it
+The app is an information and self-assessment tool. Its scores are not hiring decisions or measures of proven competence.
 
-Python 3.12+ and Node 20+ are required.
+## Run locally
+
+### Requirements
+
+- Python 3.12 or later
+- [uv](https://docs.astral.sh/uv/)
+- Node.js 20 or later and npm
+
+No local language model, Ollama installation, model download, provider API key, or Supabase account is required for a fresh local run. The backend defaults to the deterministic `mock` provider. Without Supabase browser settings, profiles are stored in that browser's local storage; this storage is not synced across browsers or devices.
+
+No shell environment-variable setup is needed to start the app. In an existing checkout, ignored `.env` files may override these defaults.
+
+### First-time setup
+
+Open two PowerShell terminals at the project root.
+
+**Terminal 1 — backend**
 
 ```powershell
-# Backend first-time setup, from backend/
-uv venv
-uv pip install -e ".[dev]"
-# Normal start after setup. Provider settings are loaded from the ignored backend/.env.
-uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000/docs
+Set-Location backend
+uv sync --extra dev
+uv run uvicorn app.main:app --reload
+```
+
+**Terminal 2 — frontend**
+
+```powershell
+Set-Location frontend
+npm install
+npm run dev
+```
+
+Open the app at [http://localhost:5173](http://localhost:5173). The backend API documentation is at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs), and its health endpoint is [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health).
+
+After installing dependencies once, start the app by running only `uv run uvicorn app.main:app --reload` in `backend/` and `npm run dev` in `frontend/`.
+
+## Optional integrations
+
+### External model providers
+
+External processing is disabled by default in `backend/.env.example`. To use an external provider, copy that file to `backend/.env`, configure a supported provider and its server-side credential, and enable the relevant JD or resume processing gate only after reviewing the current terms and data-retention rules for every endpoint in the route. The app still asks for consent for each external upload. Provider credentials must stay in the backend and must never be added to a `VITE_*` variable.
+
+The supported modes are `mock`, `openrouter`, `groq`, `gemini`, `openai_compatible`, and the configured `fallback` route. The mock provider makes no network calls. There is no local LLM fallback.
+
+### Supabase cloud profiles
+
+Supabase is optional. Without Supabase settings, profiles use browser local storage. For cloud profile storage:
+
+1. Use a separate Supabase project for RADIX Talent Match and enable email/password authentication and account creation.
+2. Apply [`supabase/migrations/20261028090000_rtm_candidate_profiles.sql`](supabase/migrations/20261028090000_rtm_candidate_profiles.sql) to that project.
+3. Put the project URL and publishable key in `frontend/.env.local` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, then restart Vite.
+4. Sign in or create an account in the app. Confirm the email if the project requires it.
+
+Document analysis remains available before sign-in. Cloud profile load/save requires a signed-in account. The app does not use anonymous sessions or a service-role key. Row-level security must restrict profile rows to their owner; verify this against the hosted project before relying on cloud isolation.
+
+## API and shared contract
+
+The FastAPI service owns parsing, evidence validation and scoring. The versioned Pydantic contract in `backend/app/contracts/v1.py` is the source of truth for the generated TypeScript API types in `frontend/src/lib/api-types.ts`.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/v1/jds/analyze` | Parse and analyze a job description |
+| `POST /api/v1/resumes/parse` | Parse a resume into evidence-backed suggestions |
+| `POST /api/v1/profiles/validate` | Validate a profile against the shared contract |
+| `POST /api/v1/companies/{company_id}/talent-check` | Calculate readiness and gaps for a company bar |
+| `POST /api/v1/skill-matches/score` | Score a profile against reviewed JD requirements |
+
+During development, Vite proxies `/api` requests to the backend on port 8000.
+
+## Verify changes
+
+Run commands from the indicated directory.
+
+**Backend**
+
+```powershell
+Set-Location backend
 uv run pytest
 uv run ruff check .
-uv run python scripts/evaluate_document_samples.py # Local offline acceptance check
-uv run python scripts/evaluate_synthetic_demo.py   # Two-role offline demo score check
+```
 
-# Frontend first-time setup, from frontend/
-npm install
-# Normal start after setup. Browser-safe Supabase settings are in ignored frontend/.env.local.
-npm run dev                               # http://localhost:5173, proxies /api to the backend
+**Frontend**
+
+```powershell
+Set-Location frontend
 npm test
 npm run typecheck
 npm run build
-npm run generate:api-types                # re-export OpenAPI and regenerate src/lib/api-types.ts
 ```
 
-`npm run generate:api-types` runs the backend export script with `uv`, writes the ignored
-`frontend/openapi.json` and regenerates the committed TypeScript types.
+To regenerate the committed frontend API types after a contract change, run `npm run generate:api-types` from `frontend/`. It exports the backend OpenAPI schema to an ignored generated file and updates `src/lib/api-types.ts`.
 
-The document endpoints are `POST /api/v1/jds/analyze` and `POST /api/v1/resumes/parse`.
-`POST /api/v1/profiles/validate` validates profile saves and imports through the canonical
-Pydantic v2 contract. `POST /api/v1/companies/{company_id}/talent-check` scores a validated
-profile against the selected local company bar. `POST /api/v1/skill-matches/score` accepts the
-validated profile, a JD Analytics result and any explicit fuzzy-match decisions.
-The offline official-sample evaluator reads the ignored sample pack locally and prints only
-aggregate skill-extraction counts; it never sends documents to a provider or prints sample
-contents. Current mock results are 6/6 JD pairs and 4/4 resume pairs with evidence-backed skills.
-Run `uv run python scripts/evaluate_synthetic_demo.py` from `backend/` for two scoreable offline
-roles and two synthetic candidate profiles. These synthetic results do not count toward the
-official JD/role acceptance item.
+The official sample pack is local-only and gitignored. Where it is available, `uv run python scripts/evaluate_document_samples.py` from `backend/` runs the offline extraction evaluation and reports aggregate counts. The evaluator directly uses the no-network mock provider and does not send samples to external services. Synthetic fixtures are useful for tests, but they do not count toward official acceptance.
 
-## Shared contract (v1)
+## Data and privacy
 
-`backend/app/contracts/v1.py` is the only source of truth. Boundaries are validated with
-`extra="forbid"`, bounded fields, strict 1-10 levels, and a major-version check on
-`schema_version` (unknown majors are rejected).
+- The supplied official sample documents and their local manifest are excluded from Git. Do not commit sample files or put their contents in logs, screenshots or reports.
+- The original company skillset JSON was not supplied. The current dataset is generated from the available CSV and labelled provisional in the app.
+- Scanned PDFs without extractable text return an explicit OCR-required result; OCR is not currently configured.
+- Uploaded files are processed for the request and are not retained as raw documents. Resume text is redacted for direct identifiers before external processing, but this does not guarantee that the remaining content is non-personal.
+- Provider requests require administrator configuration and per-upload user consent. Review provider terms before sending private material.
+- Browser local storage stays in that browser. Supabase cloud profiles require authentication and owner-scoped RLS.
 
-| Object | Purpose |
-|---|---|
-| `Skill`, `SourceRef`, `SourceElement` | Skill with verified evidence and parser-created location |
-| `ExtractionResult` | JD or resume extraction, metadata and rejected claims |
-| `CandidateProfile`, `SkillsetLevel` | Editable profile with 12 optional self-reported ratings |
-| `CompanySkillBar`, `CompanyDataset` | One company's 12 required levels, with provenance |
-| `TalentCheckResult`, `GapRow` | Readiness state, score (or withheld) and per-skill gaps |
-| `SkillMatchResult`, `PossibleMatch` | Matched, missing, preferred and unconfirmed possible matches |
-| `MatchConfirmation` | Candidate decision on a fuzzy match, input to scoring |
+## Project layout
 
-`backend/app/contracts/dto.py` holds the flat provider DTO. A model only returns quotes and
-parser element ids; the backend attaches locations and builds the domain objects.
-
-## Data
-
-- The official `talent_check_company_skillsets.json` was not supplied. v1 uses
-  `data/reference/talent_check_company_skillsets.json`, generated by
-  `backend/scripts/build_company_skillsets.py` from the supplied company CSV. Its metadata
-  labels it `provisional_csv_fallback`; the app shows that label. A recovered official file
-  placed in `data/reference/official/` is loaded automatically and must be marked confirmed.
-- `data/reference/source/staging_skill_topics_fixed.csv` provides the 10-level rating ladder
-  shown next to each self-reported level. It explains a rating; it does not measure ability.
-- The official six-JD/four-resume pack and `MANIFEST.local.md` are local-only and gitignored.
-  Do not publish resume contents; check the selected provider's current terms before sending
-  any document text to a model.
-
-## Privacy and secrets
-
-- Provider keys live only in `backend/.env` (`backend/.env.example` lists the variables) and
-  are never exposed through `VITE_*` variables.
-- `LLM_PROVIDER=mock` is the no-credential default. It performs deterministic local registry-term
-  extraction and makes no network calls; it is useful for offline demos, not a substitute for a
-  live model's broader extraction ability. No local LLM or Ollama setup is part of this app.
-- `LLM_PROVIDER=fallback` optionally tries the comma-separated OpenRouter models in
-  `LLM_OPENROUTER_FALLBACK_MODELS`, then `LLM_GROQ_FALLBACK_MODEL`. Each model gets one attempt;
-  the next is used only after a provider error, invalid structured output, or a fallback response
-  whose claims all fail local evidence verification. Partial evidence failures remain visible in
-  the review result. This does not detect every semantically poor extraction.
-- The fallback route is shown in the upload screen. Review the terms for every external endpoint
-  before enabling either external-processing flag. OpenRouter requests disable upstream provider
-  fallback and require a no-training, zero-data-retention endpoint. Models with documented JSON
-  Schema support use strict mode; other configured models use JSON-object mode and are validated
-  locally. Incompatible free endpoints are skipped, so the route falls through to Groq when no
-  eligible OpenRouter endpoint is available. Groq's hosted GPT-OSS model may incur charges beyond
-  account-specific free limits; set provider spending limits. Groq may temporarily log inference
-  inputs and outputs for reliability or abuse investigation for up to 30 days unless Zero Data
-  Retention is enabled in its account settings. Offline extraction remains available through the
-  no-network `mock` provider.
-- External JD and resume processing are blocked by default. After checking the current retention
-  and training terms for every provider in the configured route, an administrator may separately set
-  `LLM_JD_PROCESSING_ALLOWED=true` and/or `LLM_RESUME_PROCESSING_ALLOWED=true`; each upload still
-  requires a separate user consent checkbox. Names, email addresses and phone patterns are
-  redacted locally before resume requests. Evidence is checked against the original parser
-  elements, which remain in memory only for that request.
-- In this workspace, the ignored backend configuration has the external-processing gates enabled
-  for the two authorized official flows. This local setting is not committed; a fresh environment
-  remains blocked until its administrator reviews the route. Per-file consent still applies.
-- Provider adapters use no tools or database access and do not log document content. A fallback
-  route logs only provider/model identifiers and safe error codes. Direct provider mode allows at
-  most one bounded structural retry; waterfall mode tries each configured route entry once.
-  Provider credentials, timeouts and missing models produce safe errors without response-body
-  details.
-- Groq constrained JSON Schema mode is used only for model IDs currently documented for strict
-  output; other Groq models use JSON-object mode and the same local Pydantic validation.
-- `frontend/.env.example` holds only the separate Supabase project's browser-safe URL and
-  publishable/anon key. The service-role key is never used by this app.
-
-## Profile storage
-
-With both Supabase values empty, profiles stay in this browser's local storage. Use the profile
-JSON export for a portable backup. When both values are configured, sign in or create a
-Supabase email/password account to store profile JSON in `public.rtm_candidate_profiles`; RLS scopes
-every operation to `auth.uid()`. If email confirmation is required, confirm from your inbox before
-signing in. JD/resume analysis remains available before sign-in; only cloud profile storage needs
-an authenticated account. A configured Supabase error is shown to the user and does not silently
-fall back to local storage.
-
-To enable cloud storage, create a **separate Supabase project for RADIX Talent Match**, enable
-email/password sign-in in its Auth settings, and apply
-`supabase/migrations/20261028090000_rtm_candidate_profiles.sql` through that project's SQL Editor.
-Sign in with an existing authorized account. Put the project URL and publishable key in
-`frontend/.env.local` as
-`VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, then restart Vite. Never add a service-role
-key to the frontend.
-
-Hosted Supabase setup and verification do not require Docker. After configuring the project above,
-verify persistence and ownership in two independent browser sessions. The repository also has an
-optional local database test; that separate test requires Docker Desktop and the Supabase CLI:
-
-```powershell
-supabase start
-supabase test db
-supabase stop
+```text
+backend/      FastAPI service, contracts, parsing, providers, scoring and tests
+frontend/     React, TypeScript and Vite application
+supabase/     RADIX-specific migration and database tests
+data/         Reference data and local-only sample inputs
+docs/         Acceptance walkthrough and design/audit reports
+references/   Source material and milestone checklist (local-only)
 ```
 
-The SQL test covers two distinct owner identities and an unauthenticated `anon` role. This optional local
-test has not run in this workspace.
+## Documentation
 
-## Local planning files
-
-`prd.md`, `implementation_plan.md`, the supplied PDFs, the checklist workbook and the official
-sample pack are excluded by `.gitignore` and stay local. `data/source_manifest.md` records the
-hashes of the supplied materials.
+- [M5 acceptance walkthrough](docs/m5_walkthrough.md)
+- [Evidence Ledger redesign report](docs/REDESIGN_REPORT.md)
+- [Design brief](docs/DESIGN_BRIEF.md)
+- [Historical UI audit](docs/AUDIT.md)
